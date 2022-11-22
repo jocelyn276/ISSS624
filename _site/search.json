@@ -123,7 +123,7 @@
     "href": "Hands-on_Ex1/Hands-on_Ex1.html#reference",
     "title": "Hands-on Exercise 1: Geospatial Data Wrangling with R",
     "section": "2.6 Reference",
-    "text": "2.6 Reference\n\n2.6.1 All about tmap package\n\ntmap: Thematic Maps in R\ntmap\ntmap: get started!\ntmap: changes in version 2.0\ntmap: creating thematic maps in a flexible way (useR!2015)\nExploring and presenting maps with tmap (useR!2017)\n\n\n\n2.6.2 Geospatial data wrangling\n\nsf: Simple Features for R\nSimple Features for R: StandardizedSupport for Spatial Vector Data\nReading, Writing and Converting Simple Features\n\n\n\n2.6.3 Data wrangling\n\ndplyr\nTidy data\ntidyr: Easily Tidy Data with 'spread()' and 'gather()' Functions"
+    "text": "2.6 Reference\n\n2.6.1 All about tmap package\n\ntmap: Thematic Maps in R\ntmap\ntmap: get started!\ntmap: changes in version 2.0\ntmap: creating thematic maps in a flexible way (useR!2015)\nExploring and presenting maps with tmap (useR!2017)\n\n\n\n2.6.2 Geospatial data wrangling\n\nsf: Simple Features for R\nSimple Features for R: StandardizedSupport for Spatial Vector Data\nReading, Writing and Converting Simple Features\n\n\n\n2.6.3 Data wrangling\n\ndplyr\nTidy data\ntidyr: Easily Tidy Data with ‘spread()’ and ‘gather()’ Functions"
   },
   {
     "objectID": "Hands-on_Ex1.html",
