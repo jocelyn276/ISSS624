@@ -95,7 +95,7 @@ We can use str() to display the complete weight matrix.
 str(wm_q)
 ```
 
-#### 1.5.2  Creating (ROOK) contiguity based neighbours
+#### 1.5.2 Creating (ROOK) contiguity based neighbours
 
 The code chunk below is used to compute Rook contiguity weight matrix.
 
@@ -148,3 +148,60 @@ plot(wm_q, coords, pch=19, cex=0.6, add=TRUE, col="Red")
 plot(hunan$geometry, border="lightgrey")
 plot(wm_r, coords,pch=19,cex=0.6, add=TRUE, col="Red")
 ```
+
+## 1.6 Computing distance based neighbours
+
+In this section, I learned how to use [dnearneigh()](https://r-spatial.github.io/spdep/reference/dnearneigh.html) to derive distance-based weight matrices.
+
+### 1.6.1 Determine the cut-off distance
+
+Firstly, we need to determine the upper limit for distance band.
+
+-   Use **knearneigh()** to return a matrix with the indices of points belonging to the set of the k nearest neighbors of each other.
+
+-   Use **knn2nb()** to convert the knn object returned by knearneigh() into a neighbor list of class nb with a list of integer vectors containing neighbour region number ids.
+
+-   Use **nbdists()** to return the length of neighbour relationship edges. The function returns in the units of the coordinates if the coordinates are projected, otherwise in **km**.
+
+-   Use **unlist()** to remove the list structure of the returned object.
+
+```{r}
+#coords <- coordinates(hunan)
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords, longlat = TRUE))
+summary(k1dists)
+```
+
+The largest first nearest neighbor distance is 61.79km, and we will set 62km as the upper distance bound.
+
+### 1.6.2 Computing fixed distance weight matrix
+
+The code chunk below is used to compute the distance weight matrix.
+
+```{r}
+wm_d62 <- dnearneigh(coords,0,62,longlat = TRUE)
+wm_d62
+```
+
+Next, use *str()* to display the content of wm_d62 weight matrix.
+
+```{r}
+str(wm_d62)
+```
+
+Another way to dispaly the structure of the weight matrix is combine *table()* and *card()*.
+
+```{r}
+table(hunan$County, card(wm_d62))
+```
+
+```{r}
+n_comp <- n.comp.nb(wm_d62)
+n_comp$nc
+```
+
+```{r}
+table(n_comp$comp.id)
+```
+
+#### 1.6.2.1 Plotting fixed distance weight matrix
