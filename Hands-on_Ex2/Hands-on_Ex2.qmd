@@ -166,7 +166,7 @@ ggplot(mapping = aes(bperm$res))+
 geary.test(hunan$GDPPC, listw=rswm_q)
 ```
 
-#### 1.2.4.2  Computing Monte Carlo Geary\'s C
+#### 1.2.4.2 Computing Monte Carlo Geary's C
 
 ```{r}
 set.seed(1234)
@@ -191,4 +191,112 @@ abline(v=1, col="red")
 
 ## 1.3 Spatial Correlogram
 
-Spatial correlograms show how correlated are pairs of spatial observations when the distance(lag) between them
+Spatial correlograms show how correlated are pairs of spatial observations when the distance(lag) between them.
+
+### 1.3.1 Compute Moran's I correlogram
+
+The code chunk below is used to compute a 6-lag spatial correlogram of GDPPC.
+
+```{r}
+MI_corr <- sp.correlogram(wm_q,
+                          hunan$GDPPC,
+                          order=6,
+                          method="I",
+                          style="W")
+plot(MI_corr)
+```
+
+```{r}
+print(MI_corr)
+```
+
+Not all autocorrelation values are statistically significant. We can print out the analysis result.
+
+### 1.3.2  Compare Geary's C correlogram and plot
+
+```{r}
+GC_corr <- sp.correlogram(wm_q, 
+                          hunan$GDPPC, 
+                          order=6, 
+                          method="C", 
+                          style="W")
+plot(GC_corr)
+```
+
+```{r}
+print(GC_corr)
+```
+
+## 1.4 Cluster and Outlier Analysis
+
+In this section, I learned how to apply appropriate Local Indicators for Spatial Association(LISA), especially local Moran's I to detect cluster and/or outlier from GDP per capita 2012 of Hunan Province.
+
+### 1.4.1 Computing local Moran's I
+
+The code chunk below is used to compute local Moran's I of GDPPC2012.
+
+```{r}
+fips <- order(hunan$County)
+localMI <- localmoran(hunan$GDPPC, rswm_q)
+head(localMI)
+```
+
+The code chunk below is used to list the content of the local Moran matrix.
+
+```{r}
+printCoefmat(data.frame(localMI[fips,], row.names=hunan$County[fips]), check.names=FALSE)
+```
+
+#### 1.4.1.1 Mapping the local Moran's I
+
+The code chunk below is used to append the local Moran's I dataframe onto hunan SpatialPolygonDataFrame. The output is called hunan.localMI.
+
+```{r}
+hunan.localMI <- cbind(hunan,localMI) %>%
+  rename(Pr.Ii = Pr.z....E.Ii..)
+```
+
+#### 1.4.1.2 Mapping local Moran's I values
+
+```{r}
+tm_shape(hunan.localMI) +
+  tm_fill(col="Ii",
+          style="pretty",
+          palette="RdBu",
+          title="local moran statistics")+
+  tm_borders(alpha=0.5)
+```
+
+#### 1.4.1.3 Mapping local Moran's I p-values
+
+Above choropleth shows that there is evidence for both positive and negative li values. However, it is useful to consider the p-values for each of there values.
+
+```{r}
+tm_shape(hunan.localMI) +
+  tm_fill(col = "Pr.Ii", 
+          breaks=c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+          palette="-Blues", 
+          title = "local Moran's I p-values") +
+  tm_borders(alpha = 0.5)
+```
+
+#### 1.4.1.4 Mapping both local Moran's I values and p-values
+
+```{r}
+localMI.map <- tm_shape(hunan.localMI) +
+  tm_fill(col = "Ii", 
+          style = "pretty", 
+          title = "local moran statistics") +
+  tm_borders(alpha = 0.5)
+
+pvalue.map <- tm_shape(hunan.localMI) +
+  tm_fill(col = "Pr.Ii", 
+          breaks=c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+          palette="-Blues", 
+          title = "local Moran's I p-values") +
+  tm_borders(alpha = 0.5)
+
+tmap_arrange(localMI.map, pvalue.map, asp=1, ncol=2)
+```
+
+## 1.5 Creating a LISA Cluster Map
