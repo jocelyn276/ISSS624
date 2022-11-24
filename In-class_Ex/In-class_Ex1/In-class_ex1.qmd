@@ -1,11 +1,13 @@
 ---
 title: "In-class Exercise 1"
+date: 2022-11-24
+date-format: long
 editor: visual
 ---
 
 ## Overview
 
-This is my first In-class Exercise for ISSS624!
+This is my first In-class Exercise for ISSS624! And I mainly learned about spatial weights and applications!
 
 ## Getting Started
 
