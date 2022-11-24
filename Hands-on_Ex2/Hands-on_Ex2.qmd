@@ -1,0 +1,194 @@
+---
+title: "Hands-on_Ex2: Global and Local Measures of Spatial Autocorrelation"
+date: 2022-11-24
+date-format: long
+editor: visual
+---
+
+## Overview
+
+In this chapter, I am going to learn how to compute Global and Local measures of Spatial Autocorrelation(GLSA) by using **spdep** package.
+
+## Getting Started
+
+The case study is to discover if development is evenly distributed geographically in Hunan Province, China. And we take a selected development indicator (i.e. GDP per capita) as the spatial pattern. If the answer is No, our next question will be "is there sign of spatial clustering?". If the answer for this question is Yes, the next question will be "where are these clusters?".
+
+Two data sets will be used in this hands-on exercise.
+
+-   Hunan province administrative boundary layer at county level, which is in ESRI shapefile format.
+
+-   Hunan_2012.csv contains selected Hunan's local development indicators in 2012.
+
+Launch the packages into R environment.
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse)
+```
+
+## 1.1 Getting the data into R environment
+
+### 1.1.1 Import shapefile into R
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", layer = "Hunan")
+```
+
+### 1.1.2 Import csv file into R
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+### 1.1.3 Perform relational join
+
+```{r}
+hunan <- left_join(hunan, hunan2012)
+```
+
+### 1.1.4 Visualize Regional Development Indicator
+
+Prepare a basemap and a choropleth map showing the distribution of GDPPC 2012 by using *qtm()* of **tmap** package.
+
+```{r}
+equal <- tm_shape(hunan) +
+  tm_fill("GDPPC",
+          n=5,
+          style = "equal") +
+  tm_borders(alpha = 0.5)+
+  tm_layout(main.title = "Equal interval classification")
+
+quantile <- tm_shape(hunan) +
+  tm_fill("GDPPC",
+          n=5,
+          style = "quantile") +
+  tm_borders(alpha = 0.5)+
+  tm_layout(main.title = "Equal quantile classification")
+
+tmap_arrange(equal,
+             quantile,
+             asp=1,
+             ncol=2)
+```
+
+## 1.2 Global Spatial Autocorrelation
+
+In this section, I am going to learn:
+
+-   how to compute global spatial autocorrelation
+
+-   perform spatial complete randomness test for global spatial autocorrelation
+
+### 1.2.1 Computing Contiguity Spatial Weights
+
+We need to construct a spatial weights of the study area at first.
+
+```{r}
+wm_q <- poly2nb(hunan,
+                queen = TRUE)
+summary(wm_q)
+```
+
+### 1.2.2 Row-standardized weights matrix
+
+Assign weights to each neighboring polygon.
+
+```{r}
+rswm_q <- nb2listw(wm_q,
+                   style ="W",
+                   zero.policy = TRUE)
+rswm_q
+```
+
+### 1.2.3 Global Spatial Autocorrelation: Moran's I
+
+### 1.2.3.1 Moran's I test
+
+Use *moran.test()* to perform Moran's I statistics testing.
+
+```{r}
+moran.test(hunan$GDPPC,
+           listw = rswm_q,
+           zero.policy = TRUE,
+           na.action = na.omit)
+```
+
+#### 1.2.3.2 Compute Monte Carlo Moran's I
+
+Use *moran.mc()* to performs permutation test for Moran's I statistic.
+
+```{r}
+set.seed(1234)
+bperm = moran.mc(hunan$GDPPC,
+                 listw = rswm_q,
+                 nsim = 999,
+                 zero.policy = TRUE,
+                 na.action = na.omit)
+bperm
+```
+
+#### 1.2.3.3 Visualising Monte Carlo Moran's I
+
+Plot a histogram of the distribution of the statistical values.
+
+```{r}
+mean(bperm$res[1:999])
+var(bperm$res[1:999])
+summary(bperm$res[1:999])
+```
+
+```{r}
+hist(bperm$res,
+     freq=TRUE,
+     breaks=20,
+     xlab="Simulated Moran's I")
+abline(v=0,
+       col="Red")
+```
+
+Use ggplot2 to plot the values.
+
+```{r}
+ggplot(mapping = aes(bperm$res))+
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue") +
+  labs(x = "Simulated Moran's I",
+      y = "Frequency") +
+  geom_vline(aes(xintercept=0),
+            color="Red", size=1)
+```
+
+### 1.2.4 Global Spatial Autocorrelation: Geary's
+
+#### 1.2.4.1 Geary's C Test
+
+```{r}
+geary.test(hunan$GDPPC, listw=rswm_q)
+```
+
+#### 1.2.4.2  Computing Monte Carlo Geary\'s C
+
+```{r}
+set.seed(1234)
+bperm=geary.mc(hunan$GDPPC, 
+               listw=rswm_q, 
+               nsim=999)
+bperm
+```
+
+#### 1.2.4.3 Visualising Monte Carlo Carlo Geary's C
+
+```{r}
+mean(bperm$res[1:999])
+var(bperm$res[1:999])
+summary(bperm$res[1:999])
+```
+
+```{r}
+hist(bperm$res, freq=TRUE, breaks=20, xlab="Simulated Geary c")
+abline(v=1, col="red") 
+```
+
+## 1.3 Spatial Correlogram
+
+Spatial correlograms show how correlated are pairs of spatial observations when the distance(lag) between them
