@@ -1,6 +1,6 @@
 ---
 title: "Hands-on_Ex2: Global and Local Measures of Spatial Autocorrelation"
-date: 2022-11-24
+date: 2022-11-25
 date-format: long
 editor: visual
 ---
@@ -212,7 +212,7 @@ print(MI_corr)
 
 Not all autocorrelation values are statistically significant. We can print out the analysis result.
 
-### 1.3.2  Compare Geary's C correlogram and plot
+### 1.3.2 Compare Geary's C correlogram and plot
 
 ```{r}
 GC_corr <- sp.correlogram(wm_q, 
@@ -300,3 +300,224 @@ tmap_arrange(localMI.map, pvalue.map, asp=1, ncol=2)
 ```
 
 ## 1.5 Creating a LISA Cluster Map
+
+### 1.5.1 Plotting Moran scatterplot
+
+The Moran scatterplot is an illustration of the relationship of between the values of the chosen attribute at each location and the average value of the same attribute at neighbouring locations.
+
+```{r}
+nci <- moran.plot(hunan$GDPPC, rswm_q,
+                  labels=as.character(hunan$County),
+                  xlab="GDPPC 2012",
+                  ylab="Spatially Lag GDP 2012")
+```
+
+### 1.5.2 Plotting Moran scatterplot with standardised variable
+
+```{r}
+hunan$Z.GDPPC <- scale(hunan$GDPPC) %>% as.vector 
+```
+
+```{r}
+nci2 <- moran.plot(hunan$Z.GDPPC, rswm_q,
+                   labels=as.character(hunan$County),
+                   xlab="z-GDPPC 2012", 
+                   ylab="Spatially Lag z-GDPPC 2012")
+```
+
+### 1.5.3 Preparing LISA map classes
+
+```{r}
+quadrant <- vector(mode="numeric",length=nrow(localMI))
+```
+
+Center the variable of interest around its mean.
+
+```{r}
+DV <- hunan$GDPPC - mean(hunan$GDPPC)
+```
+
+Center the local Moran's around the mean.
+
+```{r}
+C_mI <- localMI[,1] - mean(localMI[,1])
+```
+
+```{r}
+signif <- 0.05
+```
+
+Define four quadrants
+
+adrant\[DV \<0 & C_mI\<0\] \<- 1
+
+quadrant\[DV \<0 & C_mI\>0\] \<- 2
+
+quadrant\[DV \>0 & C_mI\<0\] \<- 3
+
+```{r}
+quadrant[DV >0 & C_mI>0] <- 4      
+quadrant[DV <0 & C_mI<0] <- 1      
+quadrant[DV <0 & C_mI>0] <- 2
+quadrant[DV >0 & C_mI<0] <- 3
+```
+
+Place non-significant Moran in category 0.
+
+```{r}
+quadrant[localMI[,5]>signif] <- 0
+```
+
+### 1.5.4 Plotting LISA map
+
+```{r}
+hunan.localMI$quadrant <- quadrant
+colors <- c("#ffffff", "#2c7bb6", "#abd9e9", "#fdae61", "#d7191c")
+clusters <- c("insignificant", "low-low", "low-high", "high-low", "high-high")
+
+tm_shape(hunan.localMI) +
+  tm_fill(col = "quadrant", 
+          style = "cat", 
+          palette = colors[c(sort(unique(quadrant)))+1], 
+          labels = clusters[c(sort(unique(quadrant)))+1],
+          popup.vars = c("")) +
+  tm_view(set.zoom.limits = c(11,17)) +
+  tm_borders(alpha=0.5)
+```
+
+Plot the local Moran's I values map and its p-values next to each other.
+
+```{r}
+gdppc <- qtm(hunan, "GDPPC")
+
+hunan.localMI$quadrant <- quadrant
+colors <- c("#ffffff", "#2c7bb6", "#abd9e9", "#fdae61", "#d7191c")
+clusters <- c("insignificant", "low-low", "low-high", "high-low", "high-high")
+
+LISAmap <- tm_shape(hunan.localMI) +
+  tm_fill(col = "quadrant", 
+          style = "cat", 
+          palette = colors[c(sort(unique(quadrant)))+1], 
+          labels = clusters[c(sort(unique(quadrant)))+1],
+          popup.vars = c("")) +
+  tm_view(set.zoom.limits = c(11,17)) +
+  tm_borders(alpha=0.5)
+
+tmap_arrange(gdppc, LISAmap, asp=1, ncol=2)
+```
+
+## 1.6 Hot Spot and Cold Spot Area Analysis
+
+"Hot spot" is a term used to describe a region or value that is higher relative to its surroundings.
+
+### 1.6.1 Getis and Ord's G-Statistics
+
+Getis and Ord's G-Statistics looks at neighbors within a defined proximity to identify where either high or low values cluster spatially. Hot-spots are recognised as areas of high values where other areas within a neighbourhood range also share high values.
+
+### 1.6.2 Deriving distance-based weight matrix
+
+There are two types of distance-based proximity matrix:
+
+-   fixed distance weight matrix;
+
+-   adaptive distance weight matrix
+
+#### 1.6.2.1 Deriving the centroid
+
+```{r}
+longitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[1]])
+latitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[2]])
+coords <- cbind(longitude, latitude)
+```
+
+#### 1.6.2.2 Determining the cut-off distance
+
+```{r}
+#coords <- coordinates(hunan)
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords, longlat = TRUE))
+summary(k1dists)
+```
+
+#### 1.6.2.3 Computing fixed distance weight matrix
+
+```{r}
+wm_d62 <- dnearneigh(coords, 0, 62, longlat = TRUE)
+wm_d62
+```
+
+```{r}
+wm62_lw <- nb2listw(wm_d62, style = 'B')
+summary(wm62_lw)
+```
+
+### 1.6.3 Computing adaptive distance weight matrix
+
+```{r}
+knn <- knn2nb(knearneigh(coords, k=8))
+knn
+```
+
+```{r}
+knn_lw <- nb2listw(knn, style = 'B')
+summary(knn_lw)
+```
+
+## 1.7 Computing Gi Statistics
+
+### 1.7.1 Gi Statistics using fixed distance
+
+```{r}
+fips <- order(hunan$County)
+gi.fixed <- localG(hunan$GDPPC, wm62_lw)
+gi.fixed
+```
+
+Join the Gi values to `hunan` sf data frame.
+
+```{r}
+hunan.gi <- cbind(hunan, as.matrix(gi.fixed)) %>%
+  rename(gstat_fixed = as.matrix.gi.fixed.)
+```
+
+### 1.7.2 Mapping Gi values with fixed distance weights
+
+```{r}
+gdppc <- qtm(hunan, "GDPPC")
+
+Gimap <-tm_shape(hunan.gi) +
+  tm_fill(col = "gstat_fixed", 
+          style = "pretty",
+          palette="-RdBu",
+          title = "local Gi") +
+  tm_borders(alpha = 0.5)
+
+tmap_arrange(gdppc, Gimap, asp=1, ncol=2)
+```
+
+### 1.7.3 Gi statistics using adaptive distance
+
+```{r}
+fips <- order(hunan$County)
+gi.adaptive <- localG(hunan$GDPPC, knn_lw)
+hunan.gi <- cbind(hunan, as.matrix(gi.adaptive)) %>%
+  rename(gstat_adaptive = as.matrix.gi.adaptive.)
+```
+
+### 1.7.4 Mapping Gi values with adaptive distance weights
+
+```{r}
+gdppc<- qtm(hunan, "GDPPC")
+
+Gimap <- tm_shape(hunan.gi) + 
+  tm_fill(col = "gstat_adaptive", 
+          style = "pretty", 
+          palette="-RdBu", 
+          title = "local Gi") + 
+  tm_borders(alpha = 0.5)
+
+tmap_arrange(gdppc, 
+             Gimap, 
+             asp=1, 
+             ncol=2)
+```
