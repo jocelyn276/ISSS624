@@ -138,10 +138,10 @@ Visualising the spatial distribution of water points
 
 ```{r}
 nga_wp <- read_rds("geodata/nga_wp.rds")
-total <- qtm(nga_wp, "total wpt")
-wp_functional <- qtm(nga_wp, "wpt functional")
-wp_nonfunctional <- qtm(nga_wp, "wpt non-functional")
-unknown <- qtm(nga_wp, "wpt unknown")
 
-tmap_arrange(total, wp_functional, wp_nonfunctional, unknown, asp=0, ncol=2)
+tm_shape(nga_wp)+ 
+  tm_polygons(c("total wpt","wpt functional","wpt non-functional","wpt unknown")) +
+  tm_layout(legend.width=0.2,
+          legend.height=0.3,
+          legend.position=c("right","bottom"))
 ```
