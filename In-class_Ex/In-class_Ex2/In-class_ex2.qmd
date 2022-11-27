@@ -143,5 +143,5 @@ wp_functional <- qtm(nga_wp, "wpt functional")
 wp_nonfunctional <- qtm(nga_wp, "wpt non-functional")
 unknown <- qtm(nga_wp, "wpt unknown")
 
-tmap_arrange(total, wp_functional, wp_nonfunctional, unknown, asp=1, ncol=2)
+tmap_arrange(total, wp_functional, wp_nonfunctional, unknown, asp=0, ncol=2)
 ```
