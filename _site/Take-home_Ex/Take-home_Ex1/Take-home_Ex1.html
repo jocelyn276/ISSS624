@@ -786,7 +786,7 @@ attr(,"class")
 </section>
 <section id="computing-morans-i-correlogram" class="level3">
 <h3 class="anchored" data-anchor-id="computing-morans-i-correlogram">5.2 Computing Moran’s I correlogram</h3>
-<p>In the code chunk below, <em>sp.correlogram()</em> of spdep package is used to compute a 8-lag spatial correlogram of GDPPC. The global spatial autocorrelation used in Moran’s I. The plot() of base Graph is then used to plot the output.</p>
+<p>In the code chunk below, <em>sp.correlogram()</em> of spdep package is used to compute a 8-lag spatial correlogram of percentage of non functional water points. The global spatial autocorrelation used in Moran’s I. The plot() of base Graph is then used to plot the output.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>MI_corr <span class="ot">&lt;-</span> <span class="fu">sp.correlogram</span>(knn8, </span>
 <span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>                          nga_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_non-functional</span><span class="st">`</span>, </span>

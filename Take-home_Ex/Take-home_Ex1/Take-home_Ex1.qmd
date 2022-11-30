@@ -405,7 +405,7 @@ ggplot(mapping = aes(bperm$res))+
 
 ### 5.2 Computing Moran's I correlogram
 
-In the code chunk below, *sp.correlogram()* of spdep package is used to compute a 8-lag spatial correlogram of GDPPC. The global spatial autocorrelation used in Moran's I. The plot() of base Graph is then used to plot the output.
+In the code chunk below, *sp.correlogram()* of spdep package is used to compute a 8-lag spatial correlogram of percentage of non functional water points. The global spatial autocorrelation used in Moran's I. The plot() of base Graph is then used to plot the output.
 
 ```{r}
 MI_corr <- sp.correlogram(knn8, 
