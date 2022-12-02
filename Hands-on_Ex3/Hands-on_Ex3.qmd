@@ -1,0 +1,383 @@
+---
+title: "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques"
+date: 2022-12-2
+date-format: long
+editor: visual
+---
+
+# 1. Overview
+
+In this hands-on exercise, I am going to learn how to delineate homogeneous region by using geographically referenced multivariate data. There are two major analysis:
+
+-   hierarchical cluster analysis;
+
+-   spatially constrained cluster analysis.
+
+# 2. Getting  Started
+
+## 2.1 The analytical question
+
+We are going to delineate Shan State, Myanmar into homogeneous regions by using multiple Information and Communication Technology measures, namely: Radio, Television, Land Line phone, Mobile phone, Computer and Internet at home.
+
+## 2.2 The data
+
+Two data sets will be used in this study,
+
+-   Myanmar Township Boundary Data
+
+-   *Shan-ICT.csv*: An extract of [**The 2014 Myanmar Population and Housing Census Myanmar**](https://myanmar.unfpa.org/en/publications/2014-population-and-housing-census-myanmar-data-sheet) at the township level.
+
+Both data sets are download from [Myanmar Information Management Unit (MIMU)](http://themimu.info/)
+
+## 2.3 Installing and loading  R packages to the R environment
+
+```{r}
+pacman::p_load(rgdal, spdep, tmap, sf, 
+               ggpubr, cluster, factoextra, NbClust,
+               heatmaply, corrplot, psych, tidyverse)
+```
+
+These packages are used for:
+
+-   Spatial data handling: **sf**, **rgdal** and **spdep**
+
+-   Attribute data handling: **tidyverse**-**readr**, **ggplot2** and **dplyr**
+
+-   Choropleth map: **tmap**
+
+-   Multivariate data visualisation and analysis: **corrplot**, **ggpubr** and **heatmaply**
+
+-   Cluster analysis: **cluster** and **ClustGeo**
+
+## 2.4 Import data
+
+### 2.4.1 Import Geospatial data
+
+The Myanmar Townership Boundary Data is in shapefile format. The code chunk below is used to import the data into R.
+
+```{r}
+shan_sf <- st_read(dsn="data/geospatial",
+                   layer="myanmar_township_boundaries")%>%
+  filter(ST %in% c("Shan (East)", "Shan (West)", "Shan (South)", "Shan (North)"))
+```
+
+The imported data file is named as *shan_sf*, which is in simple feature data.frame.
+
+```{r}
+shan_sf
+```
+
+```{r}
+glimpse(shan_sf)
+```
+
+### 2.4.2 Import aspatial data
+
+```{r}
+ict <- read_csv("data/aspatial/Shan-ICT.csv")
+```
+
+The data is called *ict*, which is saved as tibble data.frame format.
+
+```{r}
+summary(ict)
+```
+
+### 2.4.3 Derive new variables using **dplyr** package
+
+Just use the number of household will be biased. In general, the townership with relatively higher total number of households will also have higher number of households owing radio and TV.
+
+The code trunk below is used to derive the penetration rate of each ICT variable.
+
+```{r}
+ict_derived <- ict %>%
+  mutate(`RADIO_PR` = `Radio`/`Total households`*1000) %>%
+  mutate(`TV_PR` = `Television`/`Total households`*1000) %>%
+  mutate(`LLPHONE_PR` = `Land line phone`/`Total households`*1000) %>%
+  mutate(`MPHONE_PR` = `Mobile phone`/`Total households`*1000) %>%
+  mutate(`COMPUTER_PR` = `Computer`/`Total households`*1000) %>%
+  mutate(`INTERNET_PR` = `Internet at home`/`Total households`*1000) %>%
+  rename(`DT_PCODE` =`District Pcode`,`DT`=`District Name`,
+         `TS_PCODE`=`Township Pcode`, `TS`=`Township Name`,
+         `TT_HOUSEHOLDS`=`Total households`,
+         `RADIO`=`Radio`, `TV`=`Television`, 
+         `LLPHONE`=`Land line phone`, `MPHONE`=`Mobile phone`,
+         `COMPUTER`=`Computer`, `INTERNET`=`Internet at home`) 
+```
+
+```{r}
+summary(ict_derived)
+```
+
+# 3. Exploratory Data Analysis
+
+## 3.1 EDA using statistical graphics
+
+The code chunk below is used to plot a histogram of number of households with radio.
+
+```{r}
+ggplot(data=ict_derived,
+       aes(x=`RADIO`))+
+  geom_histogram(bins=20,
+                 color="black",
+                 fill="light blue")
+```
+
+Boxplot can be used to detect if there are outliers.
+
+```{r}
+ggplot(data=ict_derived,
+       aes(x=`RADIO`))+
+  geom_boxplot(color="black",
+                 fill="light blue")
+```
+
+The code chunk below is used to plot the distribution of newly-derived penetration rate.
+
+```{r}
+ggplot(data=ict_derived, 
+       aes(x=`RADIO_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+```
+
+```{r}
+ggplot(data=ict_derived, 
+       aes(x=`RADIO_PR`)) +
+  geom_boxplot(color="black", 
+               fill="light blue")
+```
+
+The code trunk below is used to create multiple histograms.
+
+```{r}
+radio <- ggplot(data=ict_derived, 
+       aes(x=`RADIO_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+tv <- ggplot(data=ict_derived, 
+       aes(x=`TV_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+
+llphone <- ggplot(data=ict_derived, 
+       aes(x=`LLPHONE_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+mphone <- ggplot(data=ict_derived, 
+       aes(x=`MPHONE_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+computer <- ggplot(data=ict_derived, 
+       aes(x=`COMPUTER_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+internet <- ggplot(data=ict_derived, 
+       aes(x=`INTERNET_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+ggarrange(radio, tv, llphone, mphone, computer, internet, 
+          ncol = 3, 
+          nrow = 2)
+```
+
+## 3.2 EDA using choropleth map
+
+### 3.2.1 Joining geospatial data with aspatial data
+
+The *shan_sf* simple feature data.frame will be used as the base data object and the *ict_derived* data.frame will be used as the join table. The code chunk is used to join them together and the key is "TS_PCODE".
+
+```{r}
+shan_sf <- left_join(shan_sf,
+                     ict_derived,
+                     by=c("TS_PCODE"="TS_PCODE"))
+```
+
+### 3.2.2 Preparing a choropleth map
+
+The code chunk below is used to plot the choropleth map by Radio_PR.
+
+```{r}
+qtm(shan_sf, "RADIO_PR")
+```
+
+To show the total number of household with radios will biased by the number of households at the townships. We can plot two chorolpleth maps.
+
+```{r}
+TOTAL_HOUSEHOLDS <- tm_shape(shan_sf)+
+  tm_fill(col = "TT_HOUSEHOLDS",
+          n=5,
+          style = "jenks",
+          title ="Total households")+
+  tm_borders(alpha=0.5)
+
+RADIO <-  tm_shape(shan_sf)+
+  tm_fill(col = "RADIO",
+          n=5,
+          style = "jenks",
+          title ="Radio Numbers")+
+  tm_borders(alpha=0.5)
+
+tmap_arrange(TOTAL_HOUSEHOLDS, RADIO,
+             asp=NA, ncol=2)
+```
+
+We can find that township with relatively higher number of households also show higher numbers of radio.
+
+```{r}
+tm_shape(shan_sf) +
+    tm_polygons(c("TT_HOUSEHOLDS", "RADIO_PR"),
+                style="jenks") +
+    tm_facets(sync = TRUE, ncol = 2) +
+  tm_legend(legend.position = c("right", "bottom"))+
+  tm_layout(outer.margins=0, asp=0)
+```
+
+# 4. Correlation Analysis
+
+Before we perform cluster analysis, it is important for us to ensure that the cluster variables are not highly correlated.
+
+The function ***corrplot.mixed()*** from ***corrplot*** package is used to visualise and analyse the correlation of the input variables.
+
+```{r}
+cluster_vars.cor = cor(ict_derived[,12:17])
+corrplot.mixed(cluster_vars.cor,
+         lower = "ellipse", 
+               upper = "number",
+               tl.pos = "lt",
+               diag = "l",
+               tl.col = "black")
+```
+
+We can find that COMPUTER_PR and INTERNET_PR are highly correlated. This suggest that only one of them should be used in the cluster analysis.
+
+# 5. Hierarchy Cluster Analysis
+
+To perform hierarchy cluster analysis, there are four major steps to do.
+
+## 5.1 Extract clustering variables
+
+The code chunk below is used to extract the clustering variables. We do not include the variable INTERNET_PR.
+
+```{r}
+cluster_vars <- shan_sf %>%
+  st_set_geometry(NULL) %>%
+  select("TS.x", "RADIO_PR", "TV_PR", "LLPHONE_PR", "MPHONE_PR", "COMPUTER_PR")
+head(cluster_vars,10)
+```
+
+Next, we need to change the row number into township names.
+
+```{r}
+row.names(cluster_vars) <- cluster_vars$"TS.x"
+head(cluster_vars,10)
+```
+
+Then we can delete the column TS.x.
+
+```{r}
+shan_ict <- select(cluster_vars, c(2:6))
+head(shan_ict, 10)
+```
+
+## 5.2 Data Standardization
+
+In order to avoid the cluster analysis result is biased to clustering variables with large values, it is useful to standardize the input variables at first.
+
+### 5.2.1 Min-Max Standardization
+
+*normalize()* is used to standardize the variables by Min-Max.
+
+```{r}
+shan_ict.std <- normalize(shan_ict)
+summary(shan_ict.std)
+```
+
+The values of the variables have been 0-1.
+
+### 5.2.2 Z-score standardization
+
+Z-score standardization is performed by *scale()*.
+
+```{r}
+shan_ict.z <- scale(shan_ict)
+describe(shan_ict.z)
+```
+
+*describe()* is used to display the main statistics, which include the standard deviation.
+
+## 5.3 Visualising the standardised clustering variables
+
+The code chunk below is used to plot the scaled *RADIO_PT*.
+
+```{r}
+r <- ggplot(data=ict_derived, 
+             aes(x= `RADIO_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+shan_ict_s_df <- as.data.frame(shan_ict.std)
+s <- ggplot(data=shan_ict_s_df, 
+       aes(x=`RADIO_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue") +
+  ggtitle("Min-Max Standardisation") +
+  theme(plot.title = element_text(size=8))
+
+shan_ict_z_df <- as.data.frame(shan_ict.z)
+z <- ggplot(data=shan_ict_z_df, 
+       aes(x=`RADIO_PR`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue") +
+  ggtitle("Z-score Standardisation") +
+  theme(plot.title = element_text(size=8))
+
+ggarrange(r, s, z,
+          ncol = 3,
+          nrow = 1)
+```
+
+The overall distribution of the clustering variables will change after standardization.
+
+## 5.4 Computing proximity matrix
+
+*dist()* can be used to compute the proximity matrix.
+
+*dist(*) supports six distance proximity calculations: **euclidean, maximum, manhattan, canberra, binary and minkowski**. The default is *euclidean* proximity matrix.
+
+```{r}
+proxmat <- dist(shan_ict, method = 'euclidean')
+proxmat
+```
+
+## 5.5 Computing Hierarchy Clustering
+
+*hclust()* employed agglomeration method to compute the cluster. Eight clustering algorithms are supported, they are: ward.D, ward.D2, single, complete, average(UPGMA), mcquitty(WPGMA), median(WPGMC) and centroid(UPGMC).
+
+The code chunk below performs hierarchy cluster analysis using ward.D method.
+
+```{r}
+hclust_ward <- hclust(proxmat, method = 'ward.D')
+```
+
+The code chunk below can be used to plot the tree.
+
+```{r}
+plot(hclust_ward, cex = 0.6)
+```
