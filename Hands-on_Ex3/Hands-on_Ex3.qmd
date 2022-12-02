@@ -381,3 +381,275 @@ The code chunk below can be used to plot the tree.
 ```{r}
 plot(hclust_ward, cex = 0.6)
 ```
+
+## 5.6 Selecting the optimal clustering algorithm
+
+***agnes()*** can calculate the agglomerative coefficient, which measures the amount of clustering structure found (values closer to 1 suggest strong clustering structure).
+
+The code chunk is used to compute the agglomerative coefficients of all hierarchical clustering algorithms.
+
+```{r}
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+ac <- function(x) {
+  agnes(shan_ict, method = x)$ac
+}
+
+map_dbl(m, ac)
+```
+
+Based on the output, we can find that Ward's method provides the strongest clustering structure. In the subsequent analysis, only Ward's method will be used.
+
+## 5.7 Determining Optimal Clusters
+
+There are three common methods to determine the optimal clusters.
+
+-   Elbow Method
+
+-   Average Silhouette Method
+
+-   Gap Statistic Method
+
+### 5.7.1 Gap Statistic Method
+
+The gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that [maximize]{.underline} the gap statistic. This means that the clustering structure is far way from the random uniform distribution of points.
+
+*clusGap()* can be used to compute the gap.
+
+```{r}
+set.seed(12345)
+gap_stat <- clusGap(shan_ict, 
+                    FUN = hcut, 
+                    nstart = 25, 
+                    K.max = 10, 
+                    B = 50)
+# Print the result
+print(gap_stat, method = "firstmax")
+```
+
+The code chunk below is used to plot the clusters.
+
+```{r}
+fviz_gap_stat(gap_stat)
+```
+
+It is not logical to retain only one cluster. By carefully examing the graph, 6-cluster gives the largest gap statistic.
+
+## 5.8 Interpreting the dendrograms
+
+The code chunk below is used to draw the dendrogram with a border around the selected clusters. The argument border is used to specify the border colors for the rectangles.
+
+```{r}
+plot(hclust_ward, cex = 0.6)
+rect.hclust(hclust_ward, 
+            k = 6, 
+            border = 2:5)
+```
+
+## 5.9 Visually-driven hierarchical clustering analysis
+
+We can use ***heatmaply*** package to performv visually-driven hierarchical clustering analysis.
+
+With ***heatmaply***, we are able to build both highly interactive cluster heatmap or static cluster heatmap.
+
+### 5.9.1 Transforming the data frame into a matrix
+
+The data has to be a data matrix to make the heatmap.
+
+The code chunk below is used to transform *shan_ict* data frame into a data matrix.
+
+```{r}
+shan_ict_mat <- data.matrix(shan_ict)
+```
+
+### 5.9.2 Plotting interactive cluster heatmap using heatmaply()
+
+The code chunk below is used to build an interactive cluster heatmap.
+
+```{r}
+heatmaply(normalize(shan_ict_mat),
+          Colv=NA,
+          dist_method = "euclidean",
+          hclust_method = "ward.D",
+          seriate = "OLO",
+          colors = Blues,
+          k_row = 6,
+          margins = c(NA,200,60,NA),
+          fontsize_row = 4,
+          fontsize_col = 5,
+          main="Geographic Segmentation of Shan State by ICT indicators",
+          xlab = "ICT Indicators",
+          ylab = "Townships of Shan State"
+          )
+```
+
+## 5.10 Mapping the clusters formed
+
+We can use ***cutree()*** to derive cluster model.
+
+```{r}
+groups <- as.factor(cutree(hclust_ward, k=6))
+```
+
+In order to visualize the clusters, the *groups* object need to appended on *shan_sf* simple feature object.
+
+The code chunk below finish the join in three steps.
+
+1.  Convert the *groups* list into matrix;
+2.  Append groups matrix onto shan_sf to produce an output simple feature object by the use of cbind();
+3.  rename as.matrix.groupsfield as CLUSTER
+
+```{r}
+shan_sf_cluster <- cbind(shan_sf, as.matrix(groups)) %>%
+  rename(`CLUSTER`=`as.matrix.groups.`)
+```
+
+The code chunk below is used to plot the choropleth map showing the cluster formed.
+
+```{r}
+qtm(shan_sf_cluster, "CLUSTER")
+```
+
+## 6. Spatially Constrained Clustering-SKATER approach
+
+## 6.1 Converting into SpatialPolygonDataFrame
+
+SKATER function only support **sp** objects such as SpatialPolygonDataFrame. So we need to convert `shan_sf` into SpatialPolygonDataFrame.
+
+The code chunk below is used to convert the file.
+
+```{r}
+shan_sp <- as_Spatial(shan_sf)
+```
+
+## 6.2 Computing Neighbour List
+
+The code chunk below is used to compute the neighbours list from polygon list.
+
+```{r}
+shan.nb <- poly2nb(shan_sp)
+summary(shan.nb)
+```
+
+```{r}
+plot(shan_sp, 
+     border=grey(.5))
+plot(shan.nb, 
+     coordinates(shan_sp), 
+     col="blue", 
+     add=TRUE)
+```
+
+## 6.3 Computing minimum spanning tree
+
+### 6.3.1 Calculating edge costs
+
+The code chunk below is used to compute the cost of each edge.
+
+```{r}
+lcosts <- nbcosts(shan.nb, shan_ict)
+```
+
+The code chunk below is used to build weight matrix.
+
+```{r}
+shan.w <- nb2listw(shan.nb, 
+                   lcosts, 
+                   style="B")
+summary(shan.w)
+```
+
+### 6.3.2 Computing minimum spanning tree
+
+```{r}
+shan.mst <- mstree(shan.w)
+```
+
+The code chunk below is used to check its class and dimension.
+
+```{r}
+class(shan.mst)
+```
+
+```{r}
+dim(shan.mst)
+```
+
+```{r}
+head(shan.mst)
+```
+
+```{r}
+plot(shan_sp, border=gray(.5))
+plot.mst(shan.mst, 
+         coordinates(shan_sp), 
+         col="blue", 
+         cex.lab=0.7, 
+         cex.circles=0.005, 
+         add=TRUE)
+```
+
+## 6.4 Computing spatially constrained clusters using SKATER method
+
+The code chunk below compute the spatially constrained cluster.
+
+```{r}
+clust6 <- skater(edges = shan.mst[,1:2], 
+                 data = shan_ict, 
+                 method = "euclidean", 
+                 ncuts = 5)
+```
+
+The code chunk below is used to examine the content of the class SKATER.
+
+```{r}
+str(clust6)
+```
+
+The code chunk below is used to check the cluster assignment.
+
+```{r}
+ccs6 <- clust6$groups
+ccs6
+```
+
+```{r}
+table(ccs6)
+```
+
+```{r}
+plot(shan_sp, border=gray(.5))
+plot(clust6, 
+     coordinates(shan_sp), 
+     cex.lab=.7,
+     groups.colors=c("red","green","blue", "brown", "pink"),
+     cex.circles=0.005, 
+     add=TRUE)
+```
+
+## 6.5 Visualising the clusters in choropleth map
+
+The code chunk below is used to plot the newly-derived clusters.
+
+```{r}
+groups_mat <- as.matrix(clust6$groups)
+shan_sf_spatialcluster <- cbind(shan_sf_cluster, as.factor(groups_mat)) %>%
+  rename(`SP_CLUSTER`=`as.factor.groups_mat.`)
+qtm(shan_sf_spatialcluster, "SP_CLUSTER")
+```
+
+The code chunk below is used plot the hierarchical clustering and spatially constrained hierarchical clustering maps together.
+
+```{r}
+hclust.map <- qtm(shan_sf_cluster,
+                  "CLUSTER") + 
+  tm_borders(alpha = 0.5) 
+
+shclust.map <- qtm(shan_sf_spatialcluster,
+                   "SP_CLUSTER") + 
+  tm_borders(alpha = 0.5) 
+
+tmap_arrange(hclust.map, shclust.map,
+             asp=NA, ncol=2)
+```

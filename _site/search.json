@@ -418,5 +418,82 @@
     "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
     "section": "5.5 Computing Hierarchy Clustering",
     "text": "5.5 Computing Hierarchy Clustering\nhclust() employed agglomeration method to compute the cluster. Eight clustering algorithms are supported, they are: ward.D, ward.D2, single, complete, average(UPGMA), mcquitty(WPGMA), median(WPGMC) and centroid(UPGMC).\nThe code chunk below performs hierarchy cluster analysis using ward.D method.\n\nhclust_ward <- hclust(proxmat, method = 'ward.D')\n\nThe code chunk below can be used to plot the tree.\n\nplot(hclust_ward, cex = 0.6)"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#selecting-the-optimal-clustering-algorithm",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#selecting-the-optimal-clustering-algorithm",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "5.6 Selecting the optimal clustering algorithm",
+    "text": "5.6 Selecting the optimal clustering algorithm\nagnes() can calculate the agglomerative coefficient, which measures the amount of clustering structure found (values closer to 1 suggest strong clustering structure).\nThe code chunk is used to compute the agglomerative coefficients of all hierarchical clustering algorithms.\n\nm <- c( \"average\", \"single\", \"complete\", \"ward\")\nnames(m) <- c( \"average\", \"single\", \"complete\", \"ward\")\n\nac <- function(x) {\n  agnes(shan_ict, method = x)$ac\n}\n\nmap_dbl(m, ac)\n\n  average    single  complete      ward \n0.8131144 0.6628705 0.8950702 0.9427730 \n\n\nBased on the output, we can find that Ward’s method provides the strongest clustering structure. In the subsequent analysis, only Ward’s method will be used."
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#determining-optimal-clusters",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#determining-optimal-clusters",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "5.7 Determining Optimal Clusters",
+    "text": "5.7 Determining Optimal Clusters\nThere are three common methods to determine the optimal clusters.\n\nElbow Method\nAverage Silhouette Method\nGap Statistic Method\n\n\n5.7.1 Gap Statistic Method\nThe gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic. This means that the clustering structure is far way from the random uniform distribution of points.\nclusGap() can be used to compute the gap.\n\nset.seed(12345)\ngap_stat <- clusGap(shan_ict, \n                    FUN = hcut, \n                    nstart = 25, \n                    K.max = 10, \n                    B = 50)\n# Print the result\nprint(gap_stat, method = \"firstmax\")\n\nClustering Gap statistic [\"clusGap\"] from call:\nclusGap(x = shan_ict, FUNcluster = hcut, K.max = 10, B = 50, nstart = 25)\nB=50 simulated reference sets, k = 1..10; spaceH0=\"scaledPCA\"\n --> Number of clusters (method 'firstmax'): 1\n          logW   E.logW       gap     SE.sim\n [1,] 8.407129 8.680794 0.2736651 0.04460994\n [2,] 8.130029 8.350712 0.2206824 0.03880130\n [3,] 7.992265 8.202550 0.2102844 0.03362652\n [4,] 7.862224 8.080655 0.2184311 0.03784781\n [5,] 7.756461 7.978022 0.2215615 0.03897071\n [6,] 7.665594 7.887777 0.2221833 0.03973087\n [7,] 7.590919 7.806333 0.2154145 0.04054939\n [8,] 7.526680 7.731619 0.2049390 0.04198644\n [9,] 7.458024 7.660795 0.2027705 0.04421874\n[10,] 7.377412 7.593858 0.2164465 0.04540947\n\n\nThe code chunk below is used to plot the clusters.\n\nfviz_gap_stat(gap_stat)\n\n\n\n\nIt is not logical to retain only one cluster. By carefully examing the graph, 6-cluster gives the largest gap statistic."
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#interpreting-the-dendrograms",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#interpreting-the-dendrograms",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "5.8 Interpreting the dendrograms",
+    "text": "5.8 Interpreting the dendrograms\nThe code chunk below is used to draw the dendrogram with a border around the selected clusters. The argument border is used to specify the border colors for the rectangles.\n\nplot(hclust_ward, cex = 0.6)\nrect.hclust(hclust_ward, \n            k = 6, \n            border = 2:5)"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#visually-driven-hierarchical-clustering-analysis",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#visually-driven-hierarchical-clustering-analysis",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "5.9 Visually-driven hierarchical clustering analysis",
+    "text": "5.9 Visually-driven hierarchical clustering analysis\nWe can use heatmaply package to performv visually-driven hierarchical clustering analysis.\nWith heatmaply, we are able to build both highly interactive cluster heatmap or static cluster heatmap.\n\n5.9.1 Transforming the data frame into a matrix\nThe data has to be a data matrix to make the heatmap.\nThe code chunk below is used to transform shan_ict data frame into a data matrix.\n\nshan_ict_mat <- data.matrix(shan_ict)\n\n\n\n5.9.2 Plotting interactive cluster heatmap using heatmaply()\nThe code chunk below is used to build an interactive cluster heatmap.\n\nheatmaply(normalize(shan_ict_mat),\n          Colv=NA,\n          dist_method = \"euclidean\",\n          hclust_method = \"ward.D\",\n          seriate = \"OLO\",\n          colors = Blues,\n          k_row = 6,\n          margins = c(NA,200,60,NA),\n          fontsize_row = 4,\n          fontsize_col = 5,\n          main=\"Geographic Segmentation of Shan State by ICT indicators\",\n          xlab = \"ICT Indicators\",\n          ylab = \"Townships of Shan State\"\n          )"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#mapping-the-clusters-formed",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#mapping-the-clusters-formed",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "5.10 Mapping the clusters formed",
+    "text": "5.10 Mapping the clusters formed\nWe can use cutree() to derive cluster model.\n\ngroups <- as.factor(cutree(hclust_ward, k=6))\n\nIn order to visualize the clusters, the groups object need to appended on shan_sf simple feature object.\nThe code chunk below finish the join in three steps.\n\nConvert the groups list into matrix;\nAppend groups matrix onto shan_sf to produce an output simple feature object by the use of cbind();\nrename as.matrix.groupsfield as CLUSTER\n\n\nshan_sf_cluster <- cbind(shan_sf, as.matrix(groups)) %>%\n  rename(`CLUSTER`=`as.matrix.groups.`)\n\nThe code chunk below is used to plot the choropleth map showing the cluster formed.\n\nqtm(shan_sf_cluster, \"CLUSTER\")"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#spatially-constrained-clustering-skater-approach",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#spatially-constrained-clustering-skater-approach",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "6. Spatially Constrained Clustering-SKATER approach",
+    "text": "6. Spatially Constrained Clustering-SKATER approach"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#converting-into-spatialpolygondataframe",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#converting-into-spatialpolygondataframe",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "6.1 Converting into SpatialPolygonDataFrame",
+    "text": "6.1 Converting into SpatialPolygonDataFrame\nSKATER function only support sp objects such as SpatialPolygonDataFrame. So we need to convert shan_sf into SpatialPolygonDataFrame.\nThe code chunk below is used to convert the file.\n\nshan_sp <- as_Spatial(shan_sf)"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#computing-neighbour-list",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#computing-neighbour-list",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "6.2 Computing Neighbour List",
+    "text": "6.2 Computing Neighbour List\nThe code chunk below is used to compute the neighbours list from polygon list.\n\nshan.nb <- poly2nb(shan_sp)\nsummary(shan.nb)\n\nNeighbour list object:\nNumber of regions: 55 \nNumber of nonzero links: 264 \nPercentage nonzero weights: 8.727273 \nAverage number of links: 4.8 \nLink number distribution:\n\n 2  3  4  5  6  7  8  9 \n 5  9  7 21  4  3  5  1 \n5 least connected regions:\n3 5 7 9 47 with 2 links\n1 most connected region:\n8 with 9 links\n\n\n\nplot(shan_sp, \n     border=grey(.5))\nplot(shan.nb, \n     coordinates(shan_sp), \n     col=\"blue\", \n     add=TRUE)"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#computing-minimum-spanning-tree",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#computing-minimum-spanning-tree",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "6.3 Computing minimum spanning tree",
+    "text": "6.3 Computing minimum spanning tree\n\n6.3.1 Calculating edge costs\nThe code chunk below is used to compute the cost of each edge.\n\nlcosts <- nbcosts(shan.nb, shan_ict)\n\nThe code chunk below is used to build weight matrix.\n\nshan.w <- nb2listw(shan.nb, \n                   lcosts, \n                   style=\"B\")\nsummary(shan.w)\n\nCharacteristics of weights list object:\nNeighbour list object:\nNumber of regions: 55 \nNumber of nonzero links: 264 \nPercentage nonzero weights: 8.727273 \nAverage number of links: 4.8 \nLink number distribution:\n\n 2  3  4  5  6  7  8  9 \n 5  9  7 21  4  3  5  1 \n5 least connected regions:\n3 5 7 9 47 with 2 links\n1 most connected region:\n8 with 9 links\n\nWeights style: B \nWeights constants summary:\n   n   nn       S0       S1        S2\nB 55 3025 76267.65 58260785 522016004\n\n\n\n\n6.3.2 Computing minimum spanning tree\n\nshan.mst <- mstree(shan.w)\n\nThe code chunk below is used to check its class and dimension.\n\nclass(shan.mst)\n\n[1] \"mst\"    \"matrix\"\n\n\n\ndim(shan.mst)\n\n[1] 54  3\n\n\n\nhead(shan.mst)\n\n     [,1] [,2]      [,3]\n[1,]   31   25 229.44658\n[2,]   25   10 163.95741\n[3,]   10    1 144.02475\n[4,]   10    9 157.04230\n[5,]    9    8  90.82891\n[6,]    8    6 140.01101\n\n\n\nplot(shan_sp, border=gray(.5))\nplot.mst(shan.mst, \n         coordinates(shan_sp), \n         col=\"blue\", \n         cex.lab=0.7, \n         cex.circles=0.005, \n         add=TRUE)"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#computing-spatially-constrained-clusters-using-skater-method",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#computing-spatially-constrained-clusters-using-skater-method",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "6.4 Computing spatially constrained clusters using SKATER method",
+    "text": "6.4 Computing spatially constrained clusters using SKATER method\nThe code chunk below compute the spatially constrained cluster.\n\nclust6 <- skater(edges = shan.mst[,1:2], \n                 data = shan_ict, \n                 method = \"euclidean\", \n                 ncuts = 5)\n\nThe code chunk below is used to examine the content of the class SKATER.\n\nstr(clust6)\n\nList of 8\n $ groups      : num [1:55] 3 3 6 3 3 3 3 3 3 3 ...\n $ edges.groups:List of 6\n  ..$ :List of 3\n  .. ..$ node: num [1:22] 13 48 54 55 45 37 34 16 25 31 ...\n  .. ..$ edge: num [1:21, 1:3] 48 55 54 37 34 16 45 31 13 13 ...\n  .. ..$ ssw : num 3423\n  ..$ :List of 3\n  .. ..$ node: num [1:18] 47 27 53 38 42 15 41 51 43 32 ...\n  .. ..$ edge: num [1:17, 1:3] 53 15 42 38 41 51 15 27 15 43 ...\n  .. ..$ ssw : num 3759\n  ..$ :List of 3\n  .. ..$ node: num [1:11] 2 6 8 1 36 4 10 9 46 5 ...\n  .. ..$ edge: num [1:10, 1:3] 6 1 8 36 4 6 8 10 10 9 ...\n  .. ..$ ssw : num 1458\n  ..$ :List of 3\n  .. ..$ node: num [1:2] 44 20\n  .. ..$ edge: num [1, 1:3] 44 20 95\n  .. ..$ ssw : num 95\n  ..$ :List of 3\n  .. ..$ node: num 23\n  .. ..$ edge: num[0 , 1:3] \n  .. ..$ ssw : num 0\n  ..$ :List of 3\n  .. ..$ node: num 3\n  .. ..$ edge: num[0 , 1:3] \n  .. ..$ ssw : num 0\n $ not.prune   : NULL\n $ candidates  : int [1:6] 1 2 3 4 5 6\n $ ssto        : num 12613\n $ ssw         : num [1:6] 12613 10977 9962 9540 9123 ...\n $ crit        : num [1:2] 1 Inf\n $ vec.crit    : num [1:55] 1 1 1 1 1 1 1 1 1 1 ...\n - attr(*, \"class\")= chr \"skater\"\n\n\nThe code chunk below is used to check the cluster assignment.\n\nccs6 <- clust6$groups\nccs6\n\n [1] 3 3 6 3 3 3 3 3 3 3 2 1 1 1 2 1 1 1 2 4 1 2 5 1 1 1 2 1 2 2 1 2 2 1 1 3 1 2\n[39] 2 2 2 2 2 4 1 3 2 1 1 1 2 1 2 1 1\n\n\n\ntable(ccs6)\n\nccs6\n 1  2  3  4  5  6 \n22 18 11  2  1  1 \n\n\n\nplot(shan_sp, border=gray(.5))\nplot(clust6, \n     coordinates(shan_sp), \n     cex.lab=.7,\n     groups.colors=c(\"red\",\"green\",\"blue\", \"brown\", \"pink\"),\n     cex.circles=0.005, \n     add=TRUE)\n\nWarning in segments(coords[id1, 1], coords[id1, 2], coords[id2, 1],\ncoords[id2, : \"add\" is not a graphical parameter\n\nWarning in segments(coords[id1, 1], coords[id1, 2], coords[id2, 1],\ncoords[id2, : \"add\" is not a graphical parameter\n\nWarning in segments(coords[id1, 1], coords[id1, 2], coords[id2, 1],\ncoords[id2, : \"add\" is not a graphical parameter\n\nWarning in segments(coords[id1, 1], coords[id1, 2], coords[id2, 1],\ncoords[id2, : \"add\" is not a graphical parameter"
+  },
+  {
+    "objectID": "Hands-on_Ex3/Hands-on_Ex3.html#visualising-the-clusters-in-choropleth-map",
+    "href": "Hands-on_Ex3/Hands-on_Ex3.html#visualising-the-clusters-in-choropleth-map",
+    "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
+    "section": "6.5 Visualising the clusters in choropleth map",
+    "text": "6.5 Visualising the clusters in choropleth map\nThe code chunk below is used to plot the newly-derived clusters.\n\ngroups_mat <- as.matrix(clust6$groups)\nshan_sf_spatialcluster <- cbind(shan_sf_cluster, as.factor(groups_mat)) %>%\n  rename(`SP_CLUSTER`=`as.factor.groups_mat.`)\nqtm(shan_sf_spatialcluster, \"SP_CLUSTER\")\n\n\n\n\nThe code chunk below is used plot the hierarchical clustering and spatially constrained hierarchical clustering maps together.\n\nhclust.map <- qtm(shan_sf_cluster,\n                  \"CLUSTER\") + \n  tm_borders(alpha = 0.5) \n\nshclust.map <- qtm(shan_sf_spatialcluster,\n                   \"SP_CLUSTER\") + \n  tm_borders(alpha = 0.5) \n\ntmap_arrange(hclust.map, shclust.map,\n             asp=NA, ncol=2)\n\nWarning: One tm layer group has duplicated layer types, which are omitted. To\ndraw multiple layers of the same type, use multiple layer groups (i.e. specify\ntm_shape prior to each of them).\n\nWarning: One tm layer group has duplicated layer types, which are omitted. To\ndraw multiple layers of the same type, use multiple layer groups (i.e. specify\ntm_shape prior to each of them)."
   }
 ]
