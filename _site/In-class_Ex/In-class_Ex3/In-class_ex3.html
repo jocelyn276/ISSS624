@@ -21,6 +21,69 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1.6em;
   vertical-align: middle;
 }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
 </style>
 
 
@@ -188,13 +251,43 @@ ul.task-list li input[type="checkbox"] {
 <section id="load-r-packages-into-r-environment" class="level2">
 <h2 class="anchored" data-anchor-id="load-r-packages-into-r-environment">Load R packages into R environment</h2>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(rgdal, spdep, tmap, sf, ClustGeo, </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>               ggpubr, cluster, factoextra, NbClust,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>               heatmaply, corrplot, psych, tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="data-importing-and-processing" class="level2">
 <h2 class="anchored" data-anchor-id="data-importing-and-processing">Data importing and processing</h2>
 <p>The detailed process is in Hands-on Exercise 3.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ict <span class="ot">&lt;-</span> <span class="fu">read_csv</span> (<span class="st">"data/aspatial/Shan-ICT.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 55 Columns: 11
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (4): District Pcode, District Name, Township Pcode, Township Name
+dbl (7): Total households, Radio, Television, Land line phone, Mobile phone,...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ict_derived <span class="ot">&lt;-</span> ict <span class="sc">%&gt;%</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Radio</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">TV_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Television</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">LLPHONE_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Land line phone</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">MPHONE_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Mobile phone</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">COMPUTER_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Computer</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">INTERNET_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Internet at home</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">`</span><span class="at">DT_PCODE</span><span class="st">`</span> <span class="ot">=</span><span class="st">`</span><span class="at">District Pcode</span><span class="st">`</span>,<span class="st">`</span><span class="at">DT</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">District Name</span><span class="st">`</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">TS_PCODE</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Township Pcode</span><span class="st">`</span>, <span class="st">`</span><span class="at">TS</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Township Name</span><span class="st">`</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">TT_HOUSEHOLDS</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span>,</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">RADIO</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Radio</span><span class="st">`</span>, <span class="st">`</span><span class="at">TV</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Television</span><span class="st">`</span>, </span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">LLPHONE</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Land line phone</span><span class="st">`</span>, <span class="st">`</span><span class="at">MPHONE</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Mobile phone</span><span class="st">`</span>,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">COMPUTER</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Computer</span><span class="st">`</span>, <span class="st">`</span><span class="at">INTERNET</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Internet at home</span><span class="st">`</span>) </span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>shan_sf <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="at">dsn =</span> <span class="st">"data/geospatial"</span>, </span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>                   <span class="at">layer =</span> <span class="st">"myanmar_township_boundaries"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a> <span class="fu">filter</span>(ST <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Shan (East)"</span>, <span class="st">"Shan (West)"</span>, <span class="st">"Shan (South)"</span>, <span class="st">"Shan (North)"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Reading layer `myanmar_township_boundaries' from data source 
   `H:\jocelyn276\ISSS624\In-class_Ex\In-class_Ex3\data\geospatial' 
@@ -205,6 +298,17 @@ Dimension:     XY
 Bounding box:  xmin: 92.17275 ymin: 9.671252 xmax: 101.1699 ymax: 28.54554
 Geodetic CRS:  WGS 84</code></pre>
 </div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>shan_sf <span class="ot">&lt;-</span> <span class="fu">left_join</span>(shan_sf, </span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                     ict_derived, </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">by=</span><span class="fu">c</span>(<span class="st">"TS_PCODE"</span><span class="ot">=</span><span class="st">"TS_PCODE"</span>))</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(shan_sf, <span class="st">"data/rds/shan_sf.rds"</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>cluster_vars <span class="ot">&lt;-</span> shan_sf <span class="sc">%&gt;%</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_set_geometry</span>(<span class="cn">NULL</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"TS.x"</span>, <span class="st">"RADIO_PR"</span>, <span class="st">"TV_PR"</span>, <span class="st">"LLPHONE_PR"</span>, <span class="st">"MPHONE_PR"</span>, <span class="st">"COMPUTER_PR"</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(cluster_vars) <span class="ot">&lt;-</span> cluster_vars<span class="sc">$</span><span class="st">"TS.x"</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>shan_ict <span class="ot">&lt;-</span> <span class="fu">select</span>(cluster_vars, <span class="fu">c</span>(<span class="dv">2</span><span class="sc">:</span><span class="dv">6</span>))</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(shan_ict, <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>          RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR
 Mongmit   286.1852 554.1313   35.30618  260.6944    12.15939
@@ -223,11 +327,16 @@ Kyaukme   210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
 <section id="ward-like-hierarchical-clustering-clustgeo" class="level2">
 <h2 class="anchored" data-anchor-id="ward-like-hierarchical-clustering-clustgeo">Ward-like hierarchical clustering: ClustGeo</h2>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>proxmat <span class="ot">&lt;-</span> <span class="fu">dist</span>(shan_ict, <span class="at">method =</span> <span class="st">'euclidean'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>ClustGeo package provides function called <code>hclustgeo()</code> to perform a typical Ward-like hierarchical clustering.</p>
 <p>The code chunk below is used to perform non-spatially constrained hierarchical clustering.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>nongeo_cluster <span class="ot">&lt;-</span> <span class="fu">hclustgeo</span>(proxmat)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(nongeo_cluster, <span class="at">cex =</span> <span class="fl">0.5</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">rect.hclust</span>(nongeo_cluster, </span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">k =</span> <span class="dv">6</span>, </span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">border =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="In-class_ex3_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
 </div>
@@ -236,12 +345,14 @@ Kyaukme   210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
 <section id="mapping-the-clusters-found" class="level2">
 <h2 class="anchored" data-anchor-id="mapping-the-clusters-found">Mapping the clusters found</h2>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>groups <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(<span class="fu">cutree</span>(nongeo_cluster, <span class="at">k=</span><span class="dv">6</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>shan_sf_ngeo_cluster <span class="ot">&lt;-</span> <span class="fu">cbind</span>(shan_sf, <span class="fu">as.matrix</span>(groups)) <span class="sc">%&gt;%</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">`</span><span class="at">CLUSTER</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">as.matrix.groups.</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qtm</span>(shan_sf_ngeo_cluster, <span class="st">"CLUSTER"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="In-class_ex3_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
 </div>
@@ -251,10 +362,12 @@ Kyaukme   210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
 <h2 class="anchored" data-anchor-id="spatially-constrained-hierarchical-clustering">Spatially Constrained Hierarchical Clustering</h2>
 <p>The code chunk below is used to derive a spatial distance matrix by using st_distance().</p>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>dist <span class="ot">&lt;-</span> <span class="fu">st_distance</span>(shan_sf, shan_sf)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>distmat <span class="ot">&lt;-</span> <span class="fu">as.dist</span>(dist)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The code chunk below is used to determine a suitable value for the mixing parameter alpha shown.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>cr <span class="ot">&lt;-</span> <span class="fu">choicealpha</span>(proxmat, distmat, <span class="at">range.alpha =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="fl">0.1</span>), <span class="at">K=</span><span class="dv">6</span>, <span class="at">graph =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="In-class_ex3_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="672"></p>
 </div>
@@ -264,18 +377,20 @@ Kyaukme   210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
 </div>
 <p>We are going to show alpha=0.3.</p>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>clustG <span class="ot">&lt;-</span> <span class="fu">hclustgeo</span>(proxmat, distmat, <span class="at">alpha =</span> <span class="fl">0.3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Derive the cluster object.</p>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>groups <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(<span class="fu">cutree</span>(clustG, <span class="at">k=</span><span class="dv">6</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Join the group list with shan_sf polygon feature data frame.</p>
 <div class="cell">
-
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>shan_sf_Gcluster <span class="ot">&lt;-</span> <span class="fu">cbind</span>(shan_sf, <span class="fu">as.matrix</span>(groups)) <span class="sc">%&gt;%</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">`</span><span class="at">CLUSTER</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">as.matrix.groups.</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Plot the clusters.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qtm</span>(shan_sf_Gcluster, <span class="st">"CLUSTER"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="In-class_ex3_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
 </div>
