@@ -495,5 +495,47 @@
     "title": "Hands-on_Ex3: Geographical Segmentation with Spatially Constrained Clustering Techniques",
     "section": "6.5 Visualising the clusters in choropleth map",
     "text": "6.5 Visualising the clusters in choropleth map\nThe code chunk below is used to plot the newly-derived clusters.\n\ngroups_mat <- as.matrix(clust6$groups)\nshan_sf_spatialcluster <- cbind(shan_sf_cluster, as.factor(groups_mat)) %>%\n  rename(`SP_CLUSTER`=`as.factor.groups_mat.`)\nqtm(shan_sf_spatialcluster, \"SP_CLUSTER\")\n\n\n\n\nThe code chunk below is used plot the hierarchical clustering and spatially constrained hierarchical clustering maps together.\n\nhclust.map <- qtm(shan_sf_cluster,\n                  \"CLUSTER\") + \n  tm_borders(alpha = 0.5) \n\nshclust.map <- qtm(shan_sf_spatialcluster,\n                   \"SP_CLUSTER\") + \n  tm_borders(alpha = 0.5) \n\ntmap_arrange(hclust.map, shclust.map,\n             asp=NA, ncol=2)\n\nWarning: One tm layer group has duplicated layer types, which are omitted. To\ndraw multiple layers of the same type, use multiple layer groups (i.e. specify\ntm_shape prior to each of them).\n\nWarning: One tm layer group has duplicated layer types, which are omitted. To\ndraw multiple layers of the same type, use multiple layer groups (i.e. specify\ntm_shape prior to each of them)."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex3/In-class_ex3.html",
+    "href": "In-class_Ex/In-class_Ex3/In-class_ex3.html",
+    "title": "In-class_ex3",
+    "section": "",
+    "text": "In this in-calss exercise, I am going to learn ClustGeo Method to perform non-spatially constrained hierarchical cluster analysis and spatially constrained cluster analysis."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex3/In-class_ex3.html#load-r-packages-into-r-environment",
+    "href": "In-class_Ex/In-class_Ex3/In-class_ex3.html#load-r-packages-into-r-environment",
+    "title": "In-class_ex3",
+    "section": "Load R packages into R environment",
+    "text": "Load R packages into R environment"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex3/In-class_ex3.html#data-importing-and-processing",
+    "href": "In-class_Ex/In-class_Ex3/In-class_ex3.html#data-importing-and-processing",
+    "title": "In-class_ex3",
+    "section": "Data importing and processing",
+    "text": "Data importing and processing\nThe detailed process is in Hands-on Exercise 3.\n\n\nReading layer `myanmar_township_boundaries' from data source \n  `H:\\jocelyn276\\ISSS624\\In-class_Ex\\In-class_Ex3\\data\\geospatial' \n  using driver `ESRI Shapefile'\nSimple feature collection with 330 features and 14 fields\nGeometry type: MULTIPOLYGON\nDimension:     XY\nBounding box:  xmin: 92.17275 ymin: 9.671252 xmax: 101.1699 ymax: 28.54554\nGeodetic CRS:  WGS 84\n\n\n          RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR\nMongmit   286.1852 554.1313   35.30618  260.6944    12.15939\nPindaya   417.4647 505.1300   19.83584  162.3917    12.88190\nYwangan   484.5215 260.5734   11.93591  120.2856     4.41465\nPinlaung  231.6499 541.7189   28.54454  249.4903    13.76255\nMabein    449.4903 708.6423   72.75255  392.6089    16.45042\nKalaw     280.7624 611.6204   42.06478  408.7951    29.63160\nPekon     318.6118 535.8494   39.83270  214.8476    18.97032\nLawksawk  387.1017 630.0035   31.51366  320.5686    21.76677\nNawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465\nKyaukme   210.9548 601.1773   39.58267  372.4930    30.94709"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex3/In-class_ex3.html#ward-like-hierarchical-clustering-clustgeo",
+    "href": "In-class_Ex/In-class_Ex3/In-class_ex3.html#ward-like-hierarchical-clustering-clustgeo",
+    "title": "In-class_ex3",
+    "section": "Ward-like hierarchical clustering: ClustGeo",
+    "text": "Ward-like hierarchical clustering: ClustGeo\n\n\n\nClustGeo package provides function called hclustgeo() to perform a typical Ward-like hierarchical clustering.\nThe code chunk below is used to perform non-spatially constrained hierarchical clustering."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex3/In-class_ex3.html#mapping-the-clusters-found",
+    "href": "In-class_Ex/In-class_Ex3/In-class_ex3.html#mapping-the-clusters-found",
+    "title": "In-class_ex3",
+    "section": "Mapping the clusters found",
+    "text": "Mapping the clusters found"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex3/In-class_ex3.html#spatially-constrained-hierarchical-clustering",
+    "href": "In-class_Ex/In-class_Ex3/In-class_ex3.html#spatially-constrained-hierarchical-clustering",
+    "title": "In-class_ex3",
+    "section": "Spatially Constrained Hierarchical Clustering",
+    "text": "Spatially Constrained Hierarchical Clustering\nThe code chunk below is used to derive a spatial distance matrix by using st_distance().\n\n\n\nThe code chunk below is used to determine a suitable value for the mixing parameter alpha shown.\n\n\n\n\n\n\n\n\nWe are going to show alpha=0.3.\n\n\n\nDerive the cluster object.\n\n\n\nJoin the group list with shan_sf polygon feature data frame.\n\n\n\nPlot the clusters."
   }
 ]
