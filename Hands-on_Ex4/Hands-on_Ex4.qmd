@@ -503,6 +503,7 @@ summary(gwr.adaptive$SDF$yhat)
 The code chunk below is used to create an interactive point symbol map.
 
 ```{r}
+#| warning: false
 tmap_mode("view")
 tm_shape(mpsz_svy21)+
   tm_polygons(alpha = 0.1) +
@@ -513,9 +514,14 @@ tm_shape(condo_resale.sf.adaptive) +
   tm_view(set.zoom.limits = c(11,14))
 ```
 
+```{r}
+tmap_mode("plot")
+```
+
 ### By URA Planning Region
 
 ```{r}
+#| warning: false
 tm_shape(mpsz_svy21[mpsz_svy21$REGION_N=="CENTRAL REGION", ])+
   tm_polygons()+
 tm_shape(condo_resale.sf.adaptive) + 
