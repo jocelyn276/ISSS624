@@ -239,9 +239,16 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <li><a href="#extracting-water-point-data-by-main-technology" id="toc-extracting-water-point-data-by-main-technology" class="nav-link" data-scroll-target="#extracting-water-point-data-by-main-technology">2.4.3 Extracting Water Point Data by main technology</a></li>
   <li><a href="#extracting-water-point-data-by-usage-capacity" id="toc-extracting-water-point-data-by-usage-capacity" class="nav-link" data-scroll-target="#extracting-water-point-data-by-usage-capacity">2.4.4 Extracting Water Point Data by usage capacity</a></li>
   <li><a href="#extracting-rural-water-point-data" id="toc-extracting-rural-water-point-data" class="nav-link" data-scroll-target="#extracting-rural-water-point-data">2.4.5 Extracting Rural Water Point Data</a></li>
-  <li><a href="#performing-point-in-polygon-count" id="toc-performing-point-in-polygon-count" class="nav-link" data-scroll-target="#performing-point-in-polygon-count">Performing Point-in-Polygon Count</a></li>
+  <li><a href="#performing-point-in-polygon-count" id="toc-performing-point-in-polygon-count" class="nav-link" data-scroll-target="#performing-point-in-polygon-count">2.4.6 Performing Point-in-Polygon Count</a></li>
   </ul></li>
   </ul></li>
+  <li><a href="#correlation-analysis" id="toc-correlation-analysis" class="nav-link" data-scroll-target="#correlation-analysis">3. Correlation Analysis</a></li>
+  <li><a href="#hierarchical-clustering" id="toc-hierarchical-clustering" class="nav-link" data-scroll-target="#hierarchical-clustering">4. Hierarchical Clustering</a>
+  <ul class="collapse">
+  <li><a href="#extracting-clustering-variables" id="toc-extracting-clustering-variables" class="nav-link" data-scroll-target="#extracting-clustering-variables">4.1 Extracting clustering variables</a></li>
+  <li><a href="#data-standardisation" id="toc-data-standardisation" class="nav-link" data-scroll-target="#data-standardisation">4.2 Data Standardisation</a></li>
+  </ul></li>
+  <li><a href="#spatially-constrained-clustering" id="toc-spatially-constrained-clustering" class="nav-link" data-scroll-target="#spatially-constrained-clustering">5. Spatially Constrained Clustering</a></li>
   </ul>
 </nav>
     </div>
@@ -274,9 +281,25 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <h1>1. Overview</h1>
 <section id="background" class="level2">
 <h2 class="anchored" data-anchor-id="background">1.1 Background</h2>
+<p>Regionalisation is a special kind of clustering where the objective is to group observations which are similar in their statistical attributes and spatial location. In this sense, regionalisation embeds the same logic as standard clustering techniques and applies a series of geographical constraints.</p>
 </section>
 <section id="problem-statement" class="level2">
 <h2 class="anchored" data-anchor-id="problem-statement">1.2 Problem Statement</h2>
+<p>In this exercise, we are going to regionalise Nigeria at LGA level by following attributes:</p>
+<ul>
+<li><p>Total number of functional water points</p></li>
+<li><p>Total number of non-functional water points</p></li>
+<li><p>Percentage of functional water points</p></li>
+<li><p>Percentage of non-functional water points</p></li>
+<li><p>Percentage of main water point technology (i.e.&nbsp;Hand Pump)</p></li>
+<li><p>Percentage of usage capacity (i.e.&nbsp;&lt; 1000, &gt;=1000)</p></li>
+<li><p>Percentage of rural water points</p></li>
+</ul>
+<p>Two different clustering will be applied:</p>
+<ol type="1">
+<li><p>Hierarchical Clustering</p></li>
+<li><p>Spatially Constrained Clustering</p></li>
+</ol>
 </section>
 <section id="data-used" class="level2">
 <h2 class="anchored" data-anchor-id="data-used">1.3 Data Used</h2>
@@ -295,7 +318,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <p><strong><em>sf</em></strong>: for importing and processing geospatial data,</p>
 <p><strong><em>tidyverse</em></strong>: for importing and processing non-spatial data.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf, tidyverse, tmap, funModeling)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf, tidyverse, tmap, funModeling,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>               rgdal, spdep, tmap, sf, ClustGeo,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>               ggpubr, cluster, factoextra, NbClust,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>               heatmaply, corrplot, psych, tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 </section>
@@ -310,7 +336,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <p>Convert Well Known Text data</p>
 <p>There is a column called <em>New Georeferenced Column</em> which represent spatial data in a textual format. And this kind of text file is popularly known as Well Known Text(wkt).</p>
 <p>There are two steps to convert this wkt format into a sf data frame.</p>
-<p>Firstly, <code>st_as_sfc()</code> of sf package is used to derive a new field called Geometry as shown in the code chunk below.</p>
+<p>Firstly, <code>st_as_sfc()</code> of sf package is used to derive a new field called Geometry as shown in the code chunk below</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wp_nga<span class="sc">$</span>Geometry <span class="ot">=</span> <span class="fu">st_as_sfc</span>(wp_nga<span class="sc">$</span><span class="st">`</span><span class="at">New Georeferenced Column</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
@@ -536,7 +562,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </div>
 </section>
 <section id="performing-point-in-polygon-count" class="level3">
-<h3 class="anchored" data-anchor-id="performing-point-in-polygon-count">Performing Point-in-Polygon Count</h3>
+<h3 class="anchored" data-anchor-id="performing-point-in-polygon-count">2.4.6 Performing Point-in-Polygon Count</h3>
 <p>The code chunk below is going to create a new data frame <em>nigeria_wp</em> to store the newly-derived variables.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>nigeria_wp <span class="ot">&lt;-</span> nga <span class="sc">%&gt;%</span> </span>
@@ -562,13 +588,13 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <p>The code chunk below is used to generate related percentage.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>nigeria_wp <span class="ot">&lt;-</span> nigeria_wp <span class="sc">%&gt;%</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_functional</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt functional</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_non-functional</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt non-functional</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_handpump</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt handpump</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_mechpump</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt mechpump</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_usage_below_1k</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt usage_below_1k</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_usage_above_1k</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt usage_above_1k</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_rural</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt rural</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_functional</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt functional</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_non-functional</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt non-functional</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_handpump</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt handpump</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_mechpump</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt mechpump</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_usage_below_1k</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt usage_below_1k</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_usage_above_1k</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt usage_above_1k</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">pct_rural</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">wpt rural</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">total wpt</span><span class="st">`</span><span class="sc">*</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="dv">3</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">9</span><span class="sc">:</span><span class="dv">10</span>, <span class="dv">18</span><span class="sc">:</span><span class="dv">33</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
@@ -577,7 +603,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div class="cell">
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>nigeria_wp <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/nigeria_wp.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>The code chunk below is</p>
+<p>The code chunk below is to show the summary.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nigeria_wp)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -606,20 +632,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
  Max.   :764.00   Max.   :245.00   Max.   :767.00     Max.   :245.00    
                                                                         
    wpt rural      pct_functional   pct_non-functional  pct_handpump   
- Min.   :  0.00   Min.   :0.0000   Min.   :0.0000     Min.   :0.0000  
- 1st Qu.: 23.00   1st Qu.:0.3333   1st Qu.:0.2211     1st Qu.:0.1860  
- Median : 64.00   Median :0.4792   Median :0.3559     Median :0.5255  
- Mean   : 97.45   Mean   :0.5070   Mean   :0.3654     Mean   :0.4956  
- 3rd Qu.:141.00   3rd Qu.:0.6749   3rd Qu.:0.5082     3rd Qu.:0.7857  
- Max.   :894.00   Max.   :1.0000   Max.   :1.0000     Max.   :1.0000  
+ Min.   :  0.00   Min.   :  0.00   Min.   :  0.00     Min.   :  0.00  
+ 1st Qu.: 23.00   1st Qu.: 33.33   1st Qu.: 22.11     1st Qu.: 18.60  
+ Median : 64.00   Median : 47.92   Median : 35.59     Median : 52.55  
+ Mean   : 97.45   Mean   : 50.70   Mean   : 36.54     Mean   : 49.56  
+ 3rd Qu.:141.00   3rd Qu.: 67.49   3rd Qu.: 50.82     3rd Qu.: 78.57  
+ Max.   :894.00   Max.   :100.00   Max.   :100.00     Max.   :100.00  
                   NA's   :13       NA's   :13         NA's   :13      
   pct_mechpump    pct_usage_below_1k pct_usage_above_1k   pct_rural     
- Min.   :0.0000   Min.   :0.0000     Min.   :0.0000     Min.   :0.0000  
- 1st Qu.:0.1250   1st Qu.:0.4157     1st Qu.:0.1250     1st Qu.:0.5922  
- Median :0.3193   Median :0.6807     Median :0.3193     Median :0.8717  
- Mean   :0.3818   Mean   :0.6182     Mean   :0.3818     Mean   :0.7395  
- 3rd Qu.:0.5843   3rd Qu.:0.8750     3rd Qu.:0.5843     3rd Qu.:1.0000  
- Max.   :1.0000   Max.   :1.0000     Max.   :1.0000     Max.   :1.0000  
+ Min.   :  0.00   Min.   :  0.00     Min.   :  0.00     Min.   :  0.00  
+ 1st Qu.: 12.50   1st Qu.: 41.57     1st Qu.: 12.50     1st Qu.: 59.22  
+ Median : 31.93   Median : 68.07     Median : 31.93     Median : 87.17  
+ Mean   : 38.18   Mean   : 61.82     Mean   : 38.18     Mean   : 73.95  
+ 3rd Qu.: 58.43   3rd Qu.: 87.50     3rd Qu.: 58.43     3rd Qu.:100.00  
+ Max.   :100.00   Max.   :100.00     Max.   :100.00     Max.   :100.00  
  NA's   :13       NA's   :13         NA's   :13         NA's   :13      
           geometry  
  MULTIPOLYGON :774  
@@ -631,10 +657,122 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
                     </code></pre>
 </div>
 </div>
-
-
+<p>According to summary result, we can find that there are 13 rows have NAs. Because the numbers of their total water points are 0, and respective percentage shows as NaN. The code chunk below is used to fill NaN with 0.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_non-functional</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_non-functional</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_functional</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_functional</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_handpump</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_handpump</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_mechpump</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_mechpump</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_usage_below_1k</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_usage_below_1k</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_usage_above_1k</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_usage_above_1k</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_rural</span><span class="st">`</span>[<span class="fu">is.na</span>(nigeria_wp<span class="sc">$</span><span class="st">`</span><span class="at">pct_rural</span><span class="st">`</span>)] <span class="ot">=</span> <span class="dv">0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 </section>
+</section>
+<section id="correlation-analysis" class="level1">
+<h1>3. Correlation Analysis</h1>
+<p>Before we perform cluster analysis, it it important for us to ensure that the cluster variables are not highly correlated.</p>
+<p>The code chunk below is used to visualise and analyse the correlation of the input variables.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(nigeria_wp)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Classes 'sf' and 'data.frame':  774 obs. of  21 variables:
+ $ ADM2_EN           : chr  "Aba North" "Aba South" "Abadam" "Abaji" ...
+ $ ADM2_PCODE        : chr  "NG001001" "NG001002" "NG008001" "NG015001" ...
+ $ ADM1_PCODE        : chr  "NG001" "NG001" "NG008" "NG015" ...
+ $ ADM0_EN           : chr  "Nigeria" "Nigeria" "Nigeria" "Nigeria" ...
+ $ total wpt         : int  17 71 0 57 48 233 34 119 152 66 ...
+ $ wpt functional    : int  7 29 0 23 23 82 16 72 79 18 ...
+ $ wpt non-functional: int  9 35 0 34 25 42 15 33 62 26 ...
+ $ wpt unknown       : int  1 7 0 0 0 109 3 14 11 22 ...
+ $ wpt handpump      : int  2 7 0 23 4 102 5 20 91 1 ...
+ $ wpt mechpump      : int  14 62 0 34 44 22 26 84 50 43 ...
+ $ wpt usage_below_1k: int  3 9 0 23 4 211 8 35 102 23 ...
+ $ wpt usage_above_1k: int  14 62 0 34 44 22 26 84 50 43 ...
+ $ wpt rural         : int  0 4 0 48 40 204 7 0 145 48 ...
+ $ pct_functional    : num  41.2 40.8 0 40.4 47.9 ...
+ $ pct_non-functional: num  52.9 49.3 0 59.6 52.1 ...
+ $ pct_handpump      : num  11.76 9.86 0 40.35 8.33 ...
+ $ pct_mechpump      : num  82.4 87.3 0 59.6 91.7 ...
+ $ pct_usage_below_1k: num  17.65 12.68 0 40.35 8.33 ...
+ $ pct_usage_above_1k: num  82.4 87.3 0 59.6 91.7 ...
+ $ pct_rural         : num  0 5.63 0 84.21 83.33 ...
+ $ geometry          :sfc_MULTIPOLYGON of length 774; first list element: List of 1
+  ..$ :List of 1
+  .. ..$ : num [1:71, 1:2] 7.4 7.4 7.4 7.4 7.39 ...
+  ..- attr(*, "class")= chr [1:3] "XY" "MULTIPOLYGON" "sfg"
+ - attr(*, "sf_column")= chr "geometry"
+ - attr(*, "agr")= Factor w/ 3 levels "constant","aggregate",..: NA NA NA NA NA NA NA NA NA NA ...
+  ..- attr(*, "names")= chr [1:20] "ADM2_EN" "ADM2_PCODE" "ADM1_PCODE" "ADM0_EN" ...</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>nigeria_var <span class="ot">&lt;-</span> <span class="fu">st_drop_geometry</span>(nigeria_wp)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>cluster_vars.cor <span class="ot">&lt;-</span> <span class="fu">cor</span>(nigeria_var[,<span class="dv">14</span><span class="sc">:</span><span class="dv">20</span>])</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a><span class="fu">corrplot.mixed</span>(cluster_vars.cor,</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">lower =</span> <span class="st">"ellipse"</span>, <span class="at">upper =</span> <span class="st">"number"</span>,</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">tl.pos =</span> <span class="st">"lt"</span>, <span class="at">diag =</span> <span class="st">"l"</span>, <span class="at">tl.col =</span> <span class="st">"black"</span>, </span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>        <span class="at">number.cex =</span> <span class="fl">0.6</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Take-home_Ex2_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>The correlation plot above shows that 4 variables (pct_handpump, pct_mechpump, pct_usage_below_1k, pct_usage_above_1k) are highly correlated. So only <strong><em>pct_handpump</em></strong> will be kept for the following clustering.</p>
+</section>
+<section id="hierarchical-clustering" class="level1">
+<h1>4. Hierarchical Clustering</h1>
+<section id="extracting-clustering-variables" class="level2">
+<h2 class="anchored" data-anchor-id="extracting-clustering-variables">4.1 Extracting clustering variables</h2>
+<p>The code chunk below is used to extract clustering variables.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>cluster_vars <span class="ot">&lt;-</span> nigeria_wp <span class="sc">%&gt;%</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_set_geometry</span>(<span class="cn">NULL</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"ADM2_EN"</span>,<span class="st">"pct_functional"</span>, <span class="st">"pct_non-functional"</span>, <span class="st">"pct_handpump"</span>, <span class="st">"pct_rural"</span>)</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(cluster_vars,<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          ADM2_EN pct_functional pct_non-functional pct_handpump pct_rural
+1       Aba North       41.17647           52.94118    11.764706  0.000000
+2       Aba South       40.84507           49.29577     9.859155  5.633803
+3          Abadam        0.00000            0.00000     0.000000  0.000000
+4           Abaji       40.35088           59.64912    40.350877 84.210526
+5            Abak       47.91667           52.08333     8.333333 83.333333
+6       Abakaliki       35.19313           18.02575    43.776824 87.553648
+7  Abeokuta North       47.05882           44.11765    14.705882 20.588235
+8  Abeokuta South       60.50420           27.73109    16.806723  0.000000
+9             Abi       51.97368           40.78947    59.868421 95.394737
+10    Aboh-Mbaise       27.27273           39.39394     1.515152 72.727273</code></pre>
+</div>
+</div>
+<p>Next, we are going to change the row name to LGA name and delete the row ADM2_EN.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(cluster_vars) <span class="ot">&lt;-</span> cluster_vars<span class="sc">$</span><span class="st">"ADM2_EN"</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>lga_ict <span class="ot">&lt;-</span> <span class="fu">select</span>(cluster_vars, <span class="fu">c</span>(<span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>))</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(lga_ict,<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>               pct_functional pct_non-functional pct_handpump pct_rural
+Aba North            41.17647           52.94118    11.764706  0.000000
+Aba South            40.84507           49.29577     9.859155  5.633803
+Abadam                0.00000            0.00000     0.000000  0.000000
+Abaji                40.35088           59.64912    40.350877 84.210526
+Abak                 47.91667           52.08333     8.333333 83.333333
+Abakaliki            35.19313           18.02575    43.776824 87.553648
+Abeokuta North       47.05882           44.11765    14.705882 20.588235
+Abeokuta South       60.50420           27.73109    16.806723  0.000000
+Abi                  51.97368           40.78947    59.868421 95.394737
+Aboh-Mbaise          27.27273           39.39394     1.515152 72.727273</code></pre>
+</div>
+</div>
+</section>
+<section id="data-standardisation" class="level2">
+<h2 class="anchored" data-anchor-id="data-standardisation">4.2 Data Standardisation</h2>
+</section>
+</section>
+<section id="spatially-constrained-clustering" class="level1">
+<h1>5. Spatially Constrained Clustering</h1>
+
+
 </section>
 
 </main> <!-- /main -->

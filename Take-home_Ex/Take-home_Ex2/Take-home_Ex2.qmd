@@ -12,7 +12,31 @@ editor: visual
 
 ## 1.1 Background
 
+Regionalisation is a special kind of clustering where the objective is to group observations which are similar in their statistical attributes and spatial location. In this sense, regionalisation embeds the same logic as standard clustering techniques and applies a series of geographical constraints.
+
 ## 1.2 Problem Statement
+
+In this exercise, we are going to regionalise Nigeria at LGA level by following attributes:
+
+-   Total number of functional water points
+
+-   Total number of non-functional water points
+
+-   Percentage of functional water points
+
+-   Percentage of non-functional water points
+
+-   Percentage of main water point technology (i.e. Hand Pump)
+
+-   Percentage of usage capacity (i.e. \< 1000, \>=1000)
+
+-   Percentage of rural water points
+
+Two different clustering will be applied:
+
+1.  Hierarchical Clustering
+
+2.  Spatially Constrained Clustering
 
 ## 1.3 Data Used
 
@@ -33,7 +57,10 @@ The packages will be used for this analysis:
 ***tidyverse***: for importing and processing non-spatial data.
 
 ```{r}
-pacman::p_load(sf, tidyverse, tmap, funModeling)
+pacman::p_load(sf, tidyverse, tmap, funModeling,
+               rgdal, spdep, tmap, sf, ClustGeo,
+               ggpubr, cluster, factoextra, NbClust,
+               heatmaply, corrplot, psych, tidyverse)
 ```
 
 # 2. Data Processing and Wrangling
@@ -52,7 +79,7 @@ There is a column called *New Georeferenced Column* which represent spatial data
 
 There are two steps to convert this wkt format into a sf data frame.
 
-Firstly, `st_as_sfc()` of sf package is used to derive a new field called Geometry as shown in the code chunk below.
+Firstly, `st_as_sfc()` of sf package is used to derive a new field called Geometry as shown in the code chunk below
 
 ```{r}
 #| eval: false
@@ -274,7 +301,7 @@ wpt_rural <- wp_nigeria %>%
            c("FALSE"))
 ```
 
-### Performing Point-in-Polygon Count
+### 2.4.6 Performing Point-in-Polygon Count
 
 The code chunk below is going to create a new data frame *nigeria_wp* to store the newly-derived variables.
 
@@ -306,13 +333,13 @@ The code chunk below is used to generate related percentage.
 ```{r}
 #| eval: false
 nigeria_wp <- nigeria_wp %>%
-  mutate(`pct_functional` = `wpt functional`/`total wpt`) %>%
-  mutate(`pct_non-functional` = `wpt non-functional`/`total wpt`) %>%
-  mutate(`pct_handpump` = `wpt handpump`/`total wpt`) %>%
-  mutate(`pct_mechpump` = `wpt mechpump`/`total wpt`) %>%
-  mutate(`pct_usage_below_1k` = `wpt usage_below_1k`/`total wpt`) %>%
-  mutate(`pct_usage_above_1k` = `wpt usage_above_1k`/`total wpt`) %>%
-  mutate(`pct_rural` = `wpt rural`/`total wpt`) %>%
+  mutate(`pct_functional` = `wpt functional`/`total wpt`*100) %>%
+  mutate(`pct_non-functional` = `wpt non-functional`/`total wpt`*100) %>%
+  mutate(`pct_handpump` = `wpt handpump`/`total wpt`*100) %>%
+  mutate(`pct_mechpump` = `wpt mechpump`/`total wpt`*100) %>%
+  mutate(`pct_usage_below_1k` = `wpt usage_below_1k`/`total wpt`*100) %>%
+  mutate(`pct_usage_above_1k` = `wpt usage_above_1k`/`total wpt`*100) %>%
+  mutate(`pct_rural` = `wpt rural`/`total wpt`*100) %>%
   select(3:4, 9:10, 18:33)
 ```
 
@@ -325,8 +352,67 @@ write_rds(nigeria_wp, "data/nigeria_wp.rds")
 nigeria_wp <- read_rds("data/nigeria_wp.rds")
 ```
 
-The code chunk below is
+The code chunk below is to show the summary.
 
 ```{r}
 summary(nigeria_wp)
 ```
+
+According to summary result, we can find that there are 13 rows have NAs. Because the numbers of their total water points are 0, and respective percentage shows as NaN. The code chunk below is used to fill NaN with 0.
+
+```{r}
+nigeria_wp$`pct_non-functional`[is.na(nigeria_wp$`pct_non-functional`)] = 0
+nigeria_wp$`pct_functional`[is.na(nigeria_wp$`pct_functional`)] = 0
+nigeria_wp$`pct_handpump`[is.na(nigeria_wp$`pct_handpump`)] = 0
+nigeria_wp$`pct_mechpump`[is.na(nigeria_wp$`pct_mechpump`)] = 0
+nigeria_wp$`pct_usage_below_1k`[is.na(nigeria_wp$`pct_usage_below_1k`)] = 0
+nigeria_wp$`pct_usage_above_1k`[is.na(nigeria_wp$`pct_usage_above_1k`)] = 0
+nigeria_wp$`pct_rural`[is.na(nigeria_wp$`pct_rural`)] = 0
+```
+
+# 3. Correlation Analysis
+
+Before we perform cluster analysis, it it important for us to ensure that the cluster variables are not highly correlated.
+
+The code chunk below is used to visualise and analyse the correlation of the input variables.
+
+```{r}
+str(nigeria_wp)
+```
+
+```{r}
+nigeria_var <- st_drop_geometry(nigeria_wp)
+
+cluster_vars.cor <- cor(nigeria_var[,14:20])
+corrplot.mixed(cluster_vars.cor,
+         lower = "ellipse", upper = "number",
+               tl.pos = "lt", diag = "l", tl.col = "black", 
+        number.cex = 0.6)
+```
+
+The correlation plot above shows that 4 variables (pct_handpump, pct_mechpump, pct_usage_below_1k, pct_usage_above_1k) are highly correlated. So only ***pct_handpump*** will be kept for the following clustering.
+
+# 4. Hierarchical Clustering
+
+## 4.1 Extracting clustering variables
+
+The code chunk below is used to extract clustering variables.
+
+```{r}
+cluster_vars <- nigeria_wp %>%
+  st_set_geometry(NULL) %>%
+  select("ADM2_EN","pct_functional", "pct_non-functional", "pct_handpump", "pct_rural")
+head(cluster_vars,10)
+```
+
+Next, we are going to change the row name to LGA name and delete the row ADM2_EN.
+
+```{r}
+row.names(cluster_vars) <- cluster_vars$"ADM2_EN"
+lga_ict <- select(cluster_vars, c(2:5))
+head(lga_ict,10)
+```
+
+## 4.2 Data Standardisation
+
+# 5. Spatially Constrained Clustering
