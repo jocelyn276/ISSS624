@@ -58,7 +58,7 @@ The packages will be used for this analysis:
 
 ```{r}
 pacman::p_load(sf, tidyverse, tmap, funModeling,
-               rgdal, spdep, tmap, sf, ClustGeo,
+               rgdal, spdep, ClustGeo,
                ggpubr, cluster, factoextra, NbClust,
                heatmaply, corrplot, psych, tidyverse)
 ```
@@ -392,7 +392,7 @@ corrplot.mixed(cluster_vars.cor,
 
 The correlation plot above shows that 4 variables (pct_handpump, pct_mechpump, pct_usage_below_1k, pct_usage_above_1k) are highly correlated. So only ***pct_handpump*** will be kept for the following clustering.
 
-# 4. Hierarchical Clustering
+# 4. Conventional Clustering
 
 ## 4.1 Extracting clustering variables
 
@@ -471,10 +471,6 @@ We are going to use *dist()* function to calculate the distance matrix in the co
 
 ```{r}
 proxmat <- dist(lga_ict.z, method = 'euclidean')
-```
-
-```{r}
-proxmat
 ```
 
 ## 4.5 Computing hierarchical clustering
@@ -579,8 +575,19 @@ heatmaply(normalize(lga_ict_mat),
 ```{r}
 groups <- as.factor(cutree(hclust_ward, k=4))
 lga_cluster <- cbind(nigeria_wp, as.matrix(groups)) %>%
-  rename(`CLUSTER`=`as.matrix.groups.`)
-qtm(lga_cluster, "CLUSTER")
+  rename(`Hierarchical Cluster`=`as.matrix.groups.`)
+hcluster_plot <- tm_shape(lga_cluster) +
+  tm_polygons("Hierarchical Cluster", title = "Hierarchical Clusters") +
+  tm_layout(main.title = "Conventional Hierarchical Clustering",
+            main.title.position = "center",
+            main.title.size = 1,
+            legend.height = 0.3, 
+            legend.width = 0.2,
+            legend.text.size = 0.6,
+            legend.title.size = 1,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
+hcluster_plot
 ```
 
 The choropleth map shows the clustering result geographically. The areas are very fragmented, which is a limitation of non-spatial clustering algorithm.
@@ -653,8 +660,9 @@ summary(nglga.nb)
 There is one area(86) that has no neighbour. For the convenience of subsequent analysis, we drop it now. The code chunk below is used to delete corresponding item.
 
 ```{r}
-nigeria_wp_sp <- nigeria_wp_sp[-86,]
-nglga.nb <- poly2nb(nigeria_wp_sp)
+nigeria_wp_cb <- nigeria_wp[-86,]
+nigeria_wp_cb_sp <- as_Spatial(nigeria_wp_cb)
+nglga.nb <- poly2nb(nigeria_wp_cb_sp)
 summary(nglga.nb)
 ```
 
@@ -679,7 +687,7 @@ nglga.w <- nb2listw(nglga.nb,
 summary(nglga.w)
 ```
 
-5.3.2 Computing minimum spanning tree
+### 5.3.2 Computing minimum spanning tree
 
 **mstree()** function of **spdep** packages can be used to compute minimum spanning tree.
 
@@ -698,9 +706,9 @@ We can plot the MST to show the observation numbers of the nodes along with the 
 ```{r}
 #| fig-width: 30
 #| fig-height: 35
-plot(nigeria_wp_sp, border=gray(.5))
+plot(nigeria_wp_cb_sp, border=gray(.5))
 plot.mst(nglga.mst, 
-         coordinates(nigeria_wp_sp), 
+         coordinates(nigeria_wp_cb_sp), 
          col="blue", 
          cex.lab=0.7, 
          cex.circles=0.005, 
@@ -720,4 +728,120 @@ skclust4 <- skater(edges = nglga.mst[,1:2],
 
 ```{r}
 str(skclust4)
+```
+
+The code chunk below is used to calculate the observations in each cluster.
+
+```{r}
+cls <- skclust4$groups
+table(cls)
+```
+
+### 5.3.3 Visualising the clusters in choropleth map
+
+The code chunk below is used to plot the clusters derived by SKATER method.
+
+```{r}
+groups_mat <- as.matrix(cls)
+nigeria_wp_sf_spatialcluster <- cbind(nigeria_wp_cb, as.factor(groups_mat)) %>%
+  rename(`SP_CLUSTER`=`as.factor.groups_mat.`)
+skatercluster_plot <- tm_shape(nigeria_wp_sf_spatialcluster) +
+  tm_polygons("SP_CLUSTER", title = "SKATER Clusters") +
+  tm_layout(main.title = "Spatially Constrained Clustering-SKATER",
+            main.title.position = "center",
+            main.title.size = 1,
+            legend.height = 0.3, 
+            legend.width = 0.2,
+            legend.text.size = 0.6,
+            legend.title.size = 1,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
+skatercluster_plot
+```
+
+# 6. Spatially Constrained Clustering: ClustGeo Method
+
+In this section, we are going to use **ClustGeo** package to perform non-spatially constrained hierarchical cluster analysis and spatially constrained cluster analysis.
+
+## 6.1 Ward-like hierarchical clustering: ClustGeo
+
+To perform non-spatially constrained hierarchical cluster, we only need to provide the function a dissimilarity matrix as shown in the code chunk below.
+
+```{r}
+nongeo_cluster <- hclustgeo(proxmat)
+plot(nongeo_cluster, cex = 0.5)
+rect.hclust(nongeo_cluster, 
+            k = 4, 
+            border = 2:5)
+```
+
+### 6.1.2 Mapping the clusters formed
+
+```{r}
+groups <- as.factor(cutree(nongeo_cluster, k=4))
+nigeria_wp_sf_ngeo_cluster <- cbind(nigeria_wp, as.matrix(groups)) %>%
+  rename(`Ward-Like HCLUSTER` = `as.matrix.groups.`)
+wardlikehcluster_plot <- tm_shape(nigeria_wp_sf_ngeo_cluster) +
+  tm_polygons("Ward-Like HCLUSTER", title = "Ward-Like Hierarchical Clusters") +
+  tm_layout(main.title = "Non-Spatially Constrained Clustering-ClustGeo",
+            main.title.position = "center",
+            main.title.size = 1,
+            legend.height = 0.3, 
+            legend.width = 0.2,
+            legend.text.size = 0.6,
+            legend.title.size = 1,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
+wardlikehcluster_plot
+```
+
+## 6.2 Spatially Constrained Clustering
+
+A spatial distance matrix will be derived by using `st_distance()` of **sf** package before we perform spatially constrained hierarchical clustering.
+
+```{r}
+dist <- st_distance(nigeria_wp, nigeria_wp)
+distmat <- as.dist(dist)
+```
+
+Next, `choicealpha` will be used to determine a suitable value for the mixing parameter alpha as shown in the code chunk below.
+
+```{r}
+cr <- choicealpha(proxmat, distmat, range.alpha = seq(0, 1, 0.1), K=4, graph = TRUE)
+```
+
+```{r}
+clustG <- hclustgeo(proxmat, distmat, alpha = 0.3)
+groups <- as.factor(cutree(clustG, k=4))
+nigeria_wp_Gcluster <- cbind(nigeria_wp, as.matrix(groups)) %>%
+  rename(`Geo CLUSTER` = `as.matrix.groups.`)
+```
+
+The code chunk below is used to plot the newly-derived clusters,
+
+```{r}
+Geocluster_plot <- tm_shape(nigeria_wp_Gcluster) +
+  tm_polygons("Geo CLUSTER", title = "Geo Hierarchical Clusters") +
+  tm_layout(main.title = "Spatially Constrained Clustering-ClustGeo",
+            main.title.position = "center",
+            main.title.size = 1,
+            legend.height = 0.3, 
+            legend.width = 0.2,
+            legend.text.size = 0.6,
+            legend.title.size = 1,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
+Geocluster_plot
+```
+
+# 7. Comparison
+
+The code chunk below is used to plot the clusters result together.
+
+```{r}
+#| warning: false
+tmap_arrange(hcluster_plot, skatercluster_plot,
+             wardlikehcluster_plot, Geocluster_plot,
+             nrow = 2,
+             ncol = 2)
 ```
