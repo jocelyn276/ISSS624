@@ -34,9 +34,9 @@ In this exercise, we are going to regionalise Nigeria at LGA level by following 
 
 Two different clustering will be applied:
 
-1.  Hierarchical Clustering
+1.  Conventional Clustering, including hierarchical clustering and K-means clustering
 
-2.  Spatially Constrained Clustering
+2.  Spatially Constrained Clustering, including SKATER and ClustGeo Method
 
 ## 1.3 Data Used
 
@@ -52,15 +52,21 @@ Nigeria Level-2 Administrative Boundary(local government area), which can be dow
 
 The packages will be used for this analysis:
 
-***sf***: for importing and processing geospatial data,
+Spatial data handling: ***sf***, ***rgdal***, ***spdep***
 
-***tidyverse***: for importing and processing non-spatial data.
+Attribute data handling: ***tidyverse***
+
+Choropleth mapping: ***tmap***
+
+Multivariate data analysis and visualisation: ***corrplot***, ***heatmaply***, ***ggpubr*** and ***facteoxtra***
+
+Cluster Analysis: ***cluster***, ***ClustGeo, NbClust***
 
 ```{r}
-pacman::p_load(sf, tidyverse, tmap, funModeling,
-               rgdal, spdep, ClustGeo,
-               ggpubr, cluster, factoextra, NbClust,
-               heatmaply, corrplot, psych, tidyverse)
+pacman::p_load(sf, rgdal,spdep, tidyverse, tmap, funModeling,
+               cluster, ClustGeo, NbClust,
+               ggpubr, ,factoextra,
+               heatmaply, corrplot)
 ```
 
 # 2. Data Processing and Wrangling
@@ -93,7 +99,7 @@ Next, `st_sf()` will be used to convert the tibble data frame into sf data frame
 wp_sf <- st_sf(wp_nga, crs=4326) 
 ```
 
-The code chunk below is used to
+The code chunk below is used to display the general information about the data frame.
 
 ```{r}
 #| eval: false
@@ -267,6 +273,8 @@ wpt_mechanizedpp <- wp_nigeria %>%
 
 ### 2.4.4 Extracting Water Point Data by usage capacity
 
+The code chunk is used to display the distribution of usage capacity of water points.
+
 ```{r}
 #| eval: false
 freq(data=wp_nigeria, 
@@ -288,11 +296,15 @@ wpt_usage_cap_above_1k <- wp_nigeria %>%
 
 ### 2.4.5 Extracting Rural Water Point Data
 
+The code chunk below is used to display the distribution of rural and urban water points.
+
 ```{r}
 #| eval: false
 freq(data=wp_nigeria, 
      input = 'is_urban')
 ```
+
+The code chunk below is used to extract the number of rural water points at LGA level.
 
 ```{r}
 #| eval: false
@@ -348,6 +360,8 @@ nigeria_wp <- nigeria_wp %>%
 write_rds(nigeria_wp, "data/nigeria_wp.rds")
 ```
 
+The code chunk below is used to read the data file into R environment.
+
 ```{r}
 nigeria_wp <- read_rds("data/nigeria_wp.rds")
 ```
@@ -358,7 +372,7 @@ The code chunk below is to show the summary.
 summary(nigeria_wp)
 ```
 
-According to summary result, we can find that there are 13 rows have NAs. Because the numbers of their total water points are 0, and respective percentage shows as NaN. The code chunk below is used to fill NaN with 0.
+According to the summary result, we can find that there are 13 rows have NAs. Because the numbers of their total water points are 0, and respective percentage shows as NaN. The code chunk below is used to fill NaN with 0.
 
 ```{r}
 nigeria_wp$`pct_non-functional`[is.na(nigeria_wp$`pct_non-functional`)] = 0
@@ -370,7 +384,143 @@ nigeria_wp$`pct_usage_above_1k`[is.na(nigeria_wp$`pct_usage_above_1k`)] = 0
 nigeria_wp$`pct_rural`[is.na(nigeria_wp$`pct_rural`)] = 0
 ```
 
-# 3. Correlation Analysis
+# 3. Exploratory Data Analysis(EDA)
+
+## 3.1 EDA using statistical graphics
+
+The code chunk below is used to display individual histogram for each variables.
+
+```{r}
+nonfunctional <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_non-functional`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+functional <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_functional`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+handpump <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_handpump`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+mechpump <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_mechpump`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+usage_below_1k <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_usage_below_1k`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+usage_above_1k <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_usage_above_1k`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+rural <- ggplot(data=nigeria_wp, 
+             aes(x= `pct_rural`)) +
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue")
+
+ggarrange(nonfunctional, functional, handpump, mechpump,
+          usage_below_1k, usage_above_1k, rural,
+          ncol = 3, 
+          nrow = 3)
+```
+
+## 3.2 EDA using choropleth map
+
+The code chunk below is used to plot the choropleth map to reveal the geographical distribution of the variables.
+
+```{r}
+non_functional.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_non-functional",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Non-functional WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE) 
+
+functional.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_functional",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Functional WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
+
+handpump.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_handpump",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Handpump WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
+
+mechpump.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_mechpump",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Mechanized WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
+
+usage_below_1k.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_usage_below_1k",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Usage Capacity Below 1000 WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
+
+usage_above_1k.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_usage_above_1k",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Usage Capacity Above 1000 WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
+
+rural.map <- tm_shape(nigeria_wp) + 
+  tm_fill(col = "pct_rural",
+          n = 5,
+          style = "jenks", 
+          title = "Pct of Rural-based WPs",
+          legend.hist = TRUE,
+          palette="-RdBu") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
+
+tmap_arrange(non_functional.map, functional.map, handpump.map,
+             mechpump.map, usage_below_1k.map, usage_above_1k.map,
+             rural.map,
+             asp=NA, ncol=2)
+```
+
+# 4. Correlation Analysis
 
 Before we perform cluster analysis, it it important for us to ensure that the cluster variables are not highly correlated.
 
@@ -392,9 +542,9 @@ corrplot.mixed(cluster_vars.cor,
 
 The correlation plot above shows that 4 variables (pct_handpump, pct_mechpump, pct_usage_below_1k, pct_usage_above_1k) are highly correlated. So only ***pct_handpump*** will be kept for the following clustering.
 
-# 4. Conventional Clustering
+# 5. Conventional Clustering: Hierarchical Clustering and K-means Clustering
 
-## 4.1 Extracting clustering variables
+## 5.1 Extracting clustering variables
 
 The code chunk below is used to extract clustering variables.
 
@@ -405,9 +555,7 @@ cluster_vars <- nigeria_wp %>%
 head(cluster_vars,10)
 ```
 
-Next, we are going to change the row name to LGA name and delete the row ADM2_EN.
-
-lga_ict
+Next, we are going to change the row name to LGA name and delete the row *ADM2_EN*.
 
 ```{r}
 row.names(cluster_vars) <- cluster_vars$"ADM2_EN"
@@ -415,7 +563,7 @@ lga_ict <- select(cluster_vars, c(2:5))
 head(lga_ict,10)
 ```
 
-## 4.2 Data Standardisation
+## 5.2 Data Standardisation
 
 In order to avoid the cluster analysis result is biased to clustering variables, it is useful to standardise the input variables before performing cluster analysis.
 
@@ -426,7 +574,7 @@ lga_ict.z <- scale(lga_ict)
 describe(lga_ict.z)
 ```
 
-## 4.3 Visualising the standardised clustering variables
+## 5.3 Visualising the standardised clustering variables
 
 Before performing clustering analysis, it is good to visualise the distribution of variables.
 
@@ -434,38 +582,42 @@ Before performing clustering analysis, it is good to visualise the distribution 
 lga_ict_z_df <- as.data.frame(lga_ict.z)
 functional <- ggplot(data=lga_ict_z_df, 
        aes(x=`pct_functional`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue") +
-  ggtitle("Z-score Standardisation")
+  geom_histogram(bins=10, 
+                 color="black",
+                 fill="#E69F00") +
+  ggtitle("Functional Z-score") +
+  theme(title=element_text(size=5,color="black",face="bold"))
 
 nonfunctional <- ggplot(data=lga_ict_z_df, 
        aes(x=`pct_non-functional`)) +
-  geom_histogram(bins=20, 
+  geom_histogram(bins=10, 
                  color="black", 
-                 fill="light blue") +
-  ggtitle("Z-score Standardisation")
+                 fill="#E69F00") +
+    ggtitle("Non-Functional Z-score") +
+  theme(title=element_text(size=5,color="black",face="bold"))
 
 handpump <- ggplot(data=lga_ict_z_df, 
        aes(x=`pct_handpump`)) +
-  geom_histogram(bins=20, 
+  geom_histogram(bins=10, 
                  color="black", 
-                 fill="light blue") +
-  ggtitle("Z-score Standardisation")
+                 fill="#E69F00") +
+  ggtitle("Handpump Z-score") +
+  theme(title=element_text(size=5,color="black",face="bold"))
 
 rural <- ggplot(data=lga_ict_z_df, 
        aes(x=`pct_rural`)) +
-  geom_histogram(bins=20, 
+  geom_histogram(bins=10, 
                  color="black", 
-                 fill="light blue") +
-  ggtitle("Z-score Standardisation")
+                 fill="#E69F00") +
+  ggtitle("Rural Z-score") +
+  theme(title=element_text(size=5,color="black",face="bold" ))
 
 ggarrange(functional, nonfunctional, handpump, rural,
           ncol = 4,
           nrow = 1)
 ```
 
-## 4.4 Computing proximity matrix
+## 5.4 Computing proximity matrix
 
 We are going to use *dist()* function to calculate the distance matrix in the code chunk below, and going to use *euclidean* method.
 
@@ -473,7 +625,7 @@ We are going to use *dist()* function to calculate the distance matrix in the co
 proxmat <- dist(lga_ict.z, method = 'euclidean')
 ```
 
-## 4.5 Computing hierarchical clustering
+## 5.5 Computing hierarchical clustering
 
 *hclust()* can be used to perform hierarchical clustering. It supports eight clustering algorithms: ward.D, ward.D2, single, complete, average(UPGMA), mcquitty(WPGMA), median(WPGMC) and centroid(UPGMC).
 
@@ -483,7 +635,7 @@ The code chunk below is used to compute hierarchical clustering and adopt *centr
 hclust_ward <- hclust(proxmat, method = 'ward.D')
 ```
 
-### 4.5.1 Selecting the optimal clustering algorithm by hierarchical clustering
+### 5.5.1 Selecting the optimal clustering algorithm by hierarchical clustering
 
 *agnes()* function of **cluster** package cane calculate the agglomerative coefficient, which measures the amount of clustering structure.
 
@@ -492,7 +644,7 @@ m <- c( "average", "single", "complete", "ward", "weighted")
 names(m) <- m
 
 ac <- function(x) {
-  agnes(lga_ict, method = x)$ac
+  agnes(lga_ict.z, method = x)$ac
 }
 
 map_dbl(m, ac)
@@ -500,7 +652,7 @@ map_dbl(m, ac)
 
 According to the result, we can find that *ward* method shows the highest value, which indicates a stronger clustering structure. Hence, only *ward* method will be used in the subsequent analysis.
 
-### 4.5.2 Determining Optimal Clusters
+### 5.5.2 Determining Optimal Clusters
 
 There are three ways to determine the optimal clusters.
 
@@ -514,7 +666,7 @@ We are going to adopt *Gap Statistic Method* to determine the optimal clusters. 
 
 ```{r}
 set.seed(1234)
-gap_stat <- clusGap(lga_ict, 
+gap_stat <- clusGap(lga_ict.z, 
                     FUN = hcut, 
                     nstart = 25, 
                     K.max = 10, 
@@ -530,7 +682,7 @@ fviz_gap_stat(gap_stat)
 
 According to the graph, the recommended number of clusters is 4, which has highest Gap Statistics.
 
-### 4.5.3 Interpreting the dendrogram
+### 5.5.3 Interpreting the dendrogram
 
 ```{r}
 plot(hclust_ward,cex=0.6)
@@ -539,19 +691,19 @@ rect.hclust(hclust_ward,
             border = 2:5)
 ```
 
-### 4.5.4 Visually-driven hierarchical clustering analysis
+### 5.5.4 Visually-driven hierarchical clustering analysis
 
 We are going to build both interactive and static cluster heatmaps with the help of ***heatmaply()*** package.
 
-#### 4.5.4.1 Transforming the data frame into a matrix
+#### 5.5.4.1 Transforming the data frame into a matrix
 
 The code chunk below is used to transform *lga_ict* data frame into a data matrix.
 
 ```{r}
-lga_ict_mat <- data.matrix(lga_ict)
+lga_ict_mat <- data.matrix(lga_ict.z)
 ```
 
-#### 4.5.4.2 Plotting Interactive Cluster Heatmap
+#### 5.5.4.2 Plotting Interactive Cluster Heatmap
 
 ```{r}
 heatmaply(normalize(lga_ict_mat),
@@ -559,28 +711,30 @@ heatmaply(normalize(lga_ict_mat),
           dist_method = "euclidean",
           hclust_method = "ward.D",
           seriate = "OLO",
-          colors = Blues,
-          k_row = 6,
+          colors = Reds,
+          k_row = 4,
           margins = c(NA,200,60,NA),
-          fontsize_row = 4,
-          fontsize_col = 5,
+          fontsize_row = 3,
+          fontsize_col = 3,
           main="Geographic Segmentation of Nigeria LGA by ICT indicators",
-          xlab = "ICT Indicators",
+          xlab = "Indicators",
           ylab = "Nigeria Local Government Area"
           )
 ```
 
-### 4.5.5 Mapping the clusters formed
+### 5.5.5 Mapping the clusters formed
+
+The code chunk below is used to derive a 4-cluster model based on hierarchical clustering.
 
 ```{r}
 groups <- as.factor(cutree(hclust_ward, k=4))
 lga_cluster <- cbind(nigeria_wp, as.matrix(groups)) %>%
   rename(`Hierarchical Cluster`=`as.matrix.groups.`)
 hcluster_plot <- tm_shape(lga_cluster) +
-  tm_polygons("Hierarchical Cluster", title = "Hierarchical Clusters") +
-  tm_layout(main.title = "Conventional Hierarchical Clustering",
+  tm_polygons("Hierarchical Cluster", title = "Hierarchical Clusters", palette = "RdYlBu") +
+  tm_layout(main.title = "Heirarchical Clustering",
             main.title.position = "center",
-            main.title.size = 1,
+            main.title.size = 0.8,
             legend.height = 0.3, 
             legend.width = 0.2,
             legend.text.size = 0.6,
@@ -590,13 +744,11 @@ hcluster_plot <- tm_shape(lga_cluster) +
 hcluster_plot
 ```
 
-The choropleth map shows the clustering result geographically. The areas are very fragmented, which is a limitation of non-spatial clustering algorithm.
-
-## 4.6 Selecting the optimal clustering algorithm by K-means clustering
+## 5.6 Selecting the optimal clustering algorithm by K-means clustering
 
 As mentioned before, there are three ways to determine the optimal clusters. In section 4.5.1, we use gap statistics for hierarchical clustering. Now we are going to adopt ***Elbow Method*** and ***Average Silhouette Method*** for k-means clustering.
 
-### 4.6.1 Elbow Method
+### 5.6.1 Elbow Method
 
 The Elbow Method looks at the total WSS(within-cluster sum of Square) as a function of the number clusters.
 
@@ -608,7 +760,7 @@ fviz_nbclust(lga_ict.z, kmeans, method = "wss") +
 
 The plot between the number of clusters and the total within the sum of squares is shown in the figure above. The optimal number of clusters, is the point at which the value begins to decrease slowly; this is known as the 'elbow point', and the elbow point in the plot is k = 4.
 
-### 4.6.2 **Average Silhouette Method**
+### 5.6.2 **Average Silhouette Method**
 
 Sometimes, the Elbow Method is ambiguous. An alternative method is the average silhouette method.
 
@@ -619,7 +771,7 @@ fviz_nbclust(lga_ict.z, kmeans, method = "silhouette")+
 
 Based on the above figure, 4 clusters suggested.
 
-### 4.6.3 Plot K-means
+### 5.6.3 Plot K-means
 
 ```{r}
 kmm <- kmeans(lga_ict.z,4,nstart = 25)
@@ -630,15 +782,36 @@ fviz_cluster(kmm, data = lga_ict.z,
              )
 ```
 
-### 4.6.4 Mapping the clusters formed
+### 5.6.4 Mapping the clusters formed
 
 ```{r}
-
+lga_kmcluster <- cbind(nigeria_wp, as.matrix(kmm$cluster)) %>%
+  rename(`Kmeans Cluster`=`as.matrix.kmm.cluster.`)
+kmcluster_plot <- tm_shape(lga_kmcluster) +
+  tm_polygons("Kmeans Cluster", title = "K-means Clusters", palette = "RdYlBu") +
+  tm_layout(main.title = "K-means Clustering",
+            main.title.position = "center",
+            main.title.size = 0.8,
+            legend.height = 0.3, 
+            legend.width = 0.2,
+            legend.text.size = 0.6,
+            legend.title.size = 1,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
+kmcluster_plot
 ```
 
-# 5. Spatially Constrained Clustering: SKATER approach
+Now let's plot two maps together to show different clustering.
 
-## 5.1 Converting into SpatialPolygonsDataFrame
+```{r}
+tmap_arrange(hcluster_plot, kmcluster_plot)
+```
+
+The choropleth maps show the clustering result geographically. The areas are very fragmented, which is a limitation of non-spatial clustering algorithm.
+
+# 6. Spatially Constrained Clustering: SKATER approach
+
+## 6.1 Converting into SpatialPolygonsDataFrame
 
 Firstly, we need to convert `nigeria_wp` into SpatialPolygonsDataFrame. Because SKATER only support **sp** objects.
 
@@ -648,7 +821,7 @@ The code chunk below is used to convert `nigeria_wp` into SpatialPolygonsDataFra
 nigeria_wp_sp <- as_Spatial(nigeria_wp)
 ```
 
-## 5.2 Computing Neighbour List
+## 6.2 Computing Neighbour List
 
 The code chunk below is used to compute the neighbours list from polygon list.
 
@@ -668,9 +841,9 @@ summary(nglga.nb)
 
 Now we can find that there is no region without any links.
 
-## 5.3 Computing Minimum Spanning Tree
+## 6.3 Computing Minimum Spanning Tree
 
-### 5.3.1 Calculating edge costs
+### 6.3.1 Calculating edge costs
 
 The code chunk below is used to compute the cost of each edge.
 
@@ -687,7 +860,7 @@ nglga.w <- nb2listw(nglga.nb,
 summary(nglga.w)
 ```
 
-### 5.3.2 Computing minimum spanning tree
+### 6.3.2 Computing minimum spanning tree
 
 **mstree()** function of **spdep** packages can be used to compute minimum spanning tree.
 
@@ -715,7 +888,7 @@ plot.mst(nglga.mst,
          add=TRUE)
 ```
 
-## 5.4 Computing spatially constrained clusters using SKATER method
+## 6.4 Computing spatially constrained clusters using SKATER method
 
 The code chunk below is used to compute the spatially constrained clusters using ***skater()*** of **spdep** packages.
 
@@ -737,7 +910,7 @@ cls <- skclust4$groups
 table(cls)
 ```
 
-### 5.3.3 Visualising the clusters in choropleth map
+### 6.3.3 Visualising the clusters in choropleth map
 
 The code chunk below is used to plot the clusters derived by SKATER method.
 
@@ -746,10 +919,10 @@ groups_mat <- as.matrix(cls)
 nigeria_wp_sf_spatialcluster <- cbind(nigeria_wp_cb, as.factor(groups_mat)) %>%
   rename(`SP_CLUSTER`=`as.factor.groups_mat.`)
 skatercluster_plot <- tm_shape(nigeria_wp_sf_spatialcluster) +
-  tm_polygons("SP_CLUSTER", title = "SKATER Clusters") +
+  tm_polygons("SP_CLUSTER", title = "SKATER Clusters", palette = "RdYlBu") +
   tm_layout(main.title = "Spatially Constrained Clustering-SKATER",
             main.title.position = "center",
-            main.title.size = 1,
+            main.title.size = 0.8,
             legend.height = 0.3, 
             legend.width = 0.2,
             legend.text.size = 0.6,
@@ -759,11 +932,11 @@ skatercluster_plot <- tm_shape(nigeria_wp_sf_spatialcluster) +
 skatercluster_plot
 ```
 
-# 6. Spatially Constrained Clustering: ClustGeo Method
+# 7. Spatially Constrained Clustering: ClustGeo Method
 
 In this section, we are going to use **ClustGeo** package to perform non-spatially constrained hierarchical cluster analysis and spatially constrained cluster analysis.
 
-## 6.1 Ward-like hierarchical clustering: ClustGeo
+## 7.1 Ward-like hierarchical clustering: ClustGeo
 
 To perform non-spatially constrained hierarchical cluster, we only need to provide the function a dissimilarity matrix as shown in the code chunk below.
 
@@ -775,17 +948,17 @@ rect.hclust(nongeo_cluster,
             border = 2:5)
 ```
 
-### 6.1.2 Mapping the clusters formed
+### 7.1.1 Mapping the clusters formed
 
 ```{r}
 groups <- as.factor(cutree(nongeo_cluster, k=4))
 nigeria_wp_sf_ngeo_cluster <- cbind(nigeria_wp, as.matrix(groups)) %>%
   rename(`Ward-Like HCLUSTER` = `as.matrix.groups.`)
 wardlikehcluster_plot <- tm_shape(nigeria_wp_sf_ngeo_cluster) +
-  tm_polygons("Ward-Like HCLUSTER", title = "Ward-Like Hierarchical Clusters") +
+  tm_polygons("Ward-Like HCLUSTER", title = "Ward-Like Hierarchical Clusters", palette = "RdYlBu") +
   tm_layout(main.title = "Non-Spatially Constrained Clustering-ClustGeo",
             main.title.position = "center",
-            main.title.size = 1,
+            main.title.size = 0.8,
             legend.height = 0.3, 
             legend.width = 0.2,
             legend.text.size = 0.6,
@@ -795,7 +968,7 @@ wardlikehcluster_plot <- tm_shape(nigeria_wp_sf_ngeo_cluster) +
 wardlikehcluster_plot
 ```
 
-## 6.2 Spatially Constrained Clustering
+## 7.2 Spatially Constrained Clustering
 
 A spatial distance matrix will be derived by using `st_distance()` of **sf** package before we perform spatially constrained hierarchical clustering.
 
@@ -821,10 +994,10 @@ The code chunk below is used to plot the newly-derived clusters,
 
 ```{r}
 Geocluster_plot <- tm_shape(nigeria_wp_Gcluster) +
-  tm_polygons("Geo CLUSTER", title = "Geo Hierarchical Clusters") +
+  tm_polygons("Geo CLUSTER", title = "Geo Hierarchical Clusters", palette = "RdYlBu") +
   tm_layout(main.title = "Spatially Constrained Clustering-ClustGeo",
             main.title.position = "center",
-            main.title.size = 1,
+            main.title.size = 0.8,
             legend.height = 0.3, 
             legend.width = 0.2,
             legend.text.size = 0.6,
@@ -834,14 +1007,18 @@ Geocluster_plot <- tm_shape(nigeria_wp_Gcluster) +
 Geocluster_plot
 ```
 
-# 7. Comparison
+# 8. Visualisation on all clustering
 
 The code chunk below is used to plot the clusters result together.
 
 ```{r}
 #| warning: false
-tmap_arrange(hcluster_plot, skatercluster_plot,
+tmap_arrange(hcluster_plot, kmcluster_plot, skatercluster_plot,
              wardlikehcluster_plot, Geocluster_plot,
-             nrow = 2,
+             nrow = 3,
              ncol = 2)
 ```
+
+# 9. Acknowledgement
+
+Thanks Prof.Kam for the course materials and resourses. And thanks Jordan for the data wrangling part!
