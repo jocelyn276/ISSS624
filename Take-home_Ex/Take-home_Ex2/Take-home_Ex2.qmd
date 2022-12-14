@@ -65,7 +65,7 @@ Cluster Analysis: ***cluster***, ***ClustGeo, NbClust***
 ```{r}
 pacman::p_load(sf, rgdal,spdep, tidyverse, tmap, funModeling,
                cluster, ClustGeo, NbClust,
-               ggpubr, ,factoextra,
+               ggpubr, factoextra,
                heatmaply, corrplot)
 ```
 
@@ -744,11 +744,13 @@ hcluster_plot <- tm_shape(lga_cluster) +
 hcluster_plot
 ```
 
-## 5.6 Selecting the optimal clustering algorithm by K-means clustering
+## 5.6 Computing K-means clustering
+
+### 5.6.1 Selecting the optimal clustering algorithm by K-means clustering
 
 As mentioned before, there are three ways to determine the optimal clusters. In section 4.5.1, we use gap statistics for hierarchical clustering. Now we are going to adopt ***Elbow Method*** and ***Average Silhouette Method*** for k-means clustering.
 
-### 5.6.1 Elbow Method
+#### 5.6.1.1 Elbow Method
 
 The Elbow Method looks at the total WSS(within-cluster sum of Square) as a function of the number clusters.
 
@@ -760,7 +762,7 @@ fviz_nbclust(lga_ict.z, kmeans, method = "wss") +
 
 The plot between the number of clusters and the total within the sum of squares is shown in the figure above. The optimal number of clusters, is the point at which the value begins to decrease slowly; this is known as the 'elbow point', and the elbow point in the plot is k = 4.
 
-### 5.6.2 **Average Silhouette Method**
+#### 5.6.1.2 **Average Silhouette Method**
 
 Sometimes, the Elbow Method is ambiguous. An alternative method is the average silhouette method.
 
@@ -771,7 +773,7 @@ fviz_nbclust(lga_ict.z, kmeans, method = "silhouette")+
 
 Based on the above figure, 4 clusters suggested.
 
-### 5.6.3 Plot K-means
+### 5.6.2 Plot K-means
 
 ```{r}
 kmm <- kmeans(lga_ict.z,4,nstart = 25)
@@ -782,7 +784,7 @@ fviz_cluster(kmm, data = lga_ict.z,
              )
 ```
 
-### 5.6.4 Mapping the clusters formed
+### 5.6.3 Mapping the clusters formed
 
 ```{r}
 lga_kmcluster <- cbind(nigeria_wp, as.matrix(kmm$cluster)) %>%
@@ -1018,6 +1020,8 @@ tmap_arrange(hcluster_plot, kmcluster_plot, skatercluster_plot,
              nrow = 3,
              ncol = 2)
 ```
+
+According to above figures, we can find that traditional clustering methods are more fragmented, while spatially constrained clustering are more geographically concentrated for different clusters. But spatially constrained clustering do not perform accurate enough in our analysis, for example, in the SKATER method, there are too many areas concentrate in two clusters.
 
 # 9. Acknowledgement
 
