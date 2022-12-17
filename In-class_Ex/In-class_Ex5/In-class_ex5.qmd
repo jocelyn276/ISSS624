@@ -269,6 +269,107 @@ prob_T
 
 ## Model Optimization
 
-```{r}
+As the p-value for *distance_to_primary_road* and *distance_to_secondary_road* is higher than 0.05, the code chunk below is used to build the model that drop those two variables.
 
+```{r}
+model_op <- glm(status ~ distance_to_tertiary_road +
+                 distance_to_city +
+                 distance_to_town +
+                 water_point_population +
+                 local_population_1km +
+                 usage_capacity +
+                 is_urban +
+                 water_source_clean,
+        data = Osun_wp_sf_clean,
+        family = binomial(link = "logit"))
+```
+
+```{r}
+blr_regress(model_op)
+```
+
+```{r}
+blr_confusion_matrix(model_op, cutoff = 0.5)
+```
+
+```{r}
+Osun_wp_sp_op <- Osun_wp_sf_clean %>%
+  select(c(status,
+                 distance_to_tertiary_road,
+                 distance_to_city,
+                 distance_to_town,
+                 water_point_population,
+                 local_population_1km,
+                 usage_capacity,
+                 is_urban,
+                 water_source_clean)) %>%
+  as_Spatial()
+Osun_wp_sp_op
+```
+
+```{r}
+bw.fixed.op <- bw.ggwr(status ~
+                 distance_to_tertiary_road +
+                 distance_to_city +
+                 distance_to_town +
+                 water_point_population +
+                 local_population_1km +
+                 usage_capacity +
+                 is_urban +
+                 water_source_clean,
+                 data = Osun_wp_sp_op,
+                 family = "binomial",
+                 approach = "AIC",
+                 kernel = "gaussian",
+                 adaptive = FALSE,
+                 longlat = FALSE)
+```
+
+```{r}
+bw.fixed.op
+```
+
+```{r}
+gwlr.fixed.op <- ggwr.basic(status ~
+                 distance_to_tertiary_road +
+                 distance_to_city +
+                 distance_to_town +
+                 water_point_population +
+                 local_population_1km +
+                 usage_capacity +
+                 is_urban +
+                 water_source_clean,
+                 data = Osun_wp_sp_op,
+                 bw = bw.fixed.op,
+                 family="binomial",
+                 kernel = "gaussian",
+                 adaptive = FALSE,
+                 longlat = FALSE)
+```
+
+```{r}
+gwlr.fixed.op
+```
+
+### Converting SDF into sf data frame
+
+To assess the performance of the optimized model, we will convert the SDF object into sf data frame.
+
+```{r}
+gwr.fixed.op <- as.data.frame(gwlr.fixed.op$SDF)
+```
+
+Next, we are going to label ***yhat*** values greater or equal to 0.5 into 1 and else 0.
+
+```{r}
+gwr.fixed.op <- gwr.fixed.op %>%
+  mutate(most = ifelse(
+    gwr.fixed.op$yhat >= 0.5, T, F))
+```
+
+```{r}
+gwr.fixed.op$y <- as.factor(gwr.fixed.op$y)
+gwr.fixed.op$most <- as.factor(gwr.fixed.op$most)
+CM.op <- confusionMatrix(data=gwr.fixed.op$most, reference = gwr.fixed.op$y)
+CM.op
 ```
